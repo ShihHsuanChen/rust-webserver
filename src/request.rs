@@ -5,7 +5,7 @@ use super::http;
 
 
 pub struct Request<'a> {
-    pub protocal: http::Protocol<'a>,
+    pub protocol: http::Protocol<'a>,
     pub method: http::Method<'a>,
     pub path: String,
 }
@@ -23,13 +23,13 @@ impl Request<'_> {
             },
             None => return Err(String::from("Bad request"))
         }
-        // first line of the request: <method> <path> <protocal>
+        // first line of the request: <method> <path> <protocol>
         let mut sp = request_first_line.split(" ");
-        let (method, path, protocal) = (
+        let (method, path, protocol) = (
             // http::METHOD::GET, "/".to_string(), http::PROTOCAL::HTTP_1_1,
             http::get_method_from_str(sp.next().unwrap()).unwrap(),
             sp.next().unwrap().trim().to_string(),
-            http::get_protocal_from_str(sp.next().unwrap()).unwrap(),
+            http::get_protocol_from_str(sp.next().unwrap()).unwrap(),
         );
 
         // let mut i = 1;
@@ -51,14 +51,14 @@ impl Request<'_> {
         //     }
         //     println!("{i} {}", request_second_line);
         // }
-        Ok(Request { protocal, method, path })
+        Ok(Request { protocol, method, path })
     }
 }
 
 
 impl std::fmt::Display for Request<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Request(\r\n  protocal: {},\r\n  path: {},\r\n  method: {}\r\n)", self.protocal, self.path, self.method)
+        write!(f, "Request(\r\n  protocol: {},\r\n  path: {},\r\n  method: {}\r\n)", self.protocol, self.path, self.method)
     }
 }
 

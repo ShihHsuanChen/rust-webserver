@@ -23,7 +23,7 @@ fn handle_connection(mut stream: TcpStream) {
     let args = HashMap::new();
 
     let response = {
-        if request.protocal != PROTOCOL::HTTP_1_1 {
+        if request.protocol != PROTOCOL::HTTP_1_1 {
             make_response(404, "Not found")
         } else if request.method != METHOD::GET {
             make_response(404, "Not found")
