@@ -63,7 +63,7 @@ pub mod PROTOCOL {
     pub const HTTP_2_0: super::Protocol<'_> = super::Protocol { protocal: "HTTP", version: "1" };
 }
 
-pub fn get_protocal_by_str(protocal_str: &str) -> Result<Protocol<'static>, String> {
+pub fn get_protocal_from_str(protocal_str: &str) -> Result<Protocol<'static>, String> {
     for v in [
         PROTOCOL::HTTP_1_0,
         PROTOCOL::HTTP_1_1,
@@ -92,7 +92,7 @@ pub mod STATUS {
     pub const NOT_FOUND: super::Status<'_> = super::Status { code: 404, name: "NOT FOUND" };
 }
 
-pub fn get_status_by_code(code: u32) -> Result<Status<'static>, String> {
+pub fn get_status_from_code(code: u32) -> Result<Status<'static>, String> {
     for v in [
         STATUS::OK,
         STATUS::NOT_FOUND,

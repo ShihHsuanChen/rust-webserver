@@ -29,7 +29,7 @@ impl Request<'_> {
             // http::METHOD::GET, "/".to_string(), http::PROTOCAL::HTTP_1_1,
             http::get_method_from_str(sp.next().unwrap()).unwrap(),
             sp.next().unwrap().trim().to_string(),
-            http::get_protocal_by_str(sp.next().unwrap()).unwrap(),
+            http::get_protocal_from_str(sp.next().unwrap()).unwrap(),
         );
 
         // let mut i = 1;
