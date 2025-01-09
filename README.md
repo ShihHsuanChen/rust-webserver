@@ -11,33 +11,71 @@ Please don't use this for any production.
 ## Dependencies
 
 ## Modules
-### `http`
+#### *mod* `webserver::http`
 
 This module defines some HTTP constants
 
-#### METHOD
+#### *struct* `webserver::http::Protocol` 
 
-HTTP Methods including *GET*, *POST*, *PUT*, *PATCH*, *DELETE*, *HEAD* and *OPTION*
+A `struct` to define protocol.
 
-#### PROTOCOL
+#### *mod* `webserver::http::PROTOCOL`
 
-Including *http/1.0*, *http/1.1*, *http/2.0*
+Define constants for each HTTP versions. Including *http/1.0*, *http/1.1*, *http/2.0*
 
-### `request`
+#### *fn* `webserver::http::get_protocol_from_str`
 
-Parse HTTP requests.
+Return a protocol constant by string recorded in request content.
 
-### `response`
+#### *stuct* `webserver::http::Method`
+
+A `struct` to define HTTP Method.
+
+#### *mod* `webserver::http::METHOD`
+
+Define constants for each HTTP methods. Including *GET*, *POST*, *PUT*, *PATCH*, *DELETE*, *HEAD* and *OPTION*
+
+#### *fn* `webserver::http::get_method_from_str`
+
+Return a method constant by string recorded in request content.
+
+#### *struct* `webserver::http::Status`
+
+A `struct` to define response status codes.
+
+#### *mod* `webserver::http::STATUS`
+
+Define constants for each HTTP response status codes. Now only some frequently used status codes are implemented.
+
+#### *fn* `webserver::http::get_status_from_code`
+
+Return a status constant by status code.
+
+#### *mod* `webserver::request`
+
+Module to parse and handle http requests.
+
+#### *struct* `webserver::request::Request`
+
+A `struct` to put the structralized http request content in.
+
+#### *mod* `webserver::response`
 
 Construct responses
 
-#### `template`
+TODO
+
+#### *mod* `webserver::response::template`
 
 To make responses from templates.
 
-### `thread_pool`
+TODO 
+
+#### *mod* `webserver::thread_pool`
 
 This module implements worker and thread pool to make the web server multithreaded.
+
+TODO 
 
 ## Run
 
