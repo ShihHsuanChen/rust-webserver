@@ -41,29 +41,29 @@ pub fn get_method_from_str(method_str: &str) -> Result<Method<'static>, String> 
     Err(format!("Unknown method {method_str}."))
 }
 
-pub struct Protocal<'a> {
+pub struct Protocol<'a> {
     protocal: &'a str,
     version: &'a str,
 }
 
-impl<'a> std::fmt::Display for Protocal<'a> {
+impl<'a> std::fmt::Display for Protocol<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}/{}", self.protocal.to_uppercase(), self.version)
     }
 }
 
-impl<'a> std::cmp::PartialEq for Protocal<'a> { fn eq(&self, other: &Self) -> bool {
+impl<'a> std::cmp::PartialEq for Protocol<'a> { fn eq(&self, other: &Self) -> bool {
     self.protocal == other.protocal && self.version == other.version
 }
 }
 
 pub mod PROTOCOL {
-    pub const HTTP_1_0: super::Protocal<'_> = super::Protocal { protocal: "HTTP", version: "1" };
-    pub const HTTP_1_1: super::Protocal<'_> = super::Protocal { protocal: "HTTP", version: "1.1" };
-    pub const HTTP_2_0: super::Protocal<'_> = super::Protocal { protocal: "HTTP", version: "1" };
+    pub const HTTP_1_0: super::Protocol<'_> = super::Protocol { protocal: "HTTP", version: "1" };
+    pub const HTTP_1_1: super::Protocol<'_> = super::Protocol { protocal: "HTTP", version: "1.1" };
+    pub const HTTP_2_0: super::Protocol<'_> = super::Protocol { protocal: "HTTP", version: "1" };
 }
 
-pub fn get_protocal_by_str(protocal_str: &str) -> Result<Protocal<'static>, String> {
+pub fn get_protocal_by_str(protocal_str: &str) -> Result<Protocol<'static>, String> {
     for v in [
         PROTOCOL::HTTP_1_0,
         PROTOCOL::HTTP_1_1,

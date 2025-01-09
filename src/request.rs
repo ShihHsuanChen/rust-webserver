@@ -5,7 +5,7 @@ use super::http;
 
 
 pub struct Request<'a> {
-    pub protocal: http::Protocal<'a>,
+    pub protocal: http::Protocol<'a>,
     pub method: http::Method<'a>,
     pub path: String,
 }
