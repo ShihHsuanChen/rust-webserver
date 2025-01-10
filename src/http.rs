@@ -42,8 +42,8 @@ pub fn get_method_from_str(method_str: &str) -> Result<Method<'static>, String> 
 }
 
 pub struct Protocol<'a> {
-    protocol: &'a str,
-    version: &'a str,
+    pub protocol: &'a str,
+    pub version: &'a str,
 }
 
 impl<'a> std::fmt::Display for Protocol<'a> {
@@ -77,8 +77,8 @@ pub fn get_protocol_from_str(protocol_str: &str) -> Result<Protocol<'static>, St
 }
 
 pub struct Status<'a> {
-    code: u32,
-    name: &'a str,
+    pub code: u32,
+    pub name: &'a str,
 }
 
 impl<'a> std::fmt::Display for Status<'a> {
