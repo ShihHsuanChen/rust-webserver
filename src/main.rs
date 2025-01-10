@@ -7,7 +7,7 @@ use webserver::thread_pool::ThreadPool;
 use webserver::http::{METHOD, PROTOCOL};
 use webserver::response::{
     make_response,
-    template::Template,
+    Template,
 };
 use webserver::request::Request;
 
@@ -28,20 +28,21 @@ fn handle_connection(mut stream: TcpStream) {
 
     let args = HashMap::new();
 
+    let default_response = make_response(404, String::from("Not found"));
     let response = {
         if request.protocol != PROTOCOL::HTTP_1_1 {
-            make_response(404, "Not found")
+            default_response
         } else if request.method != METHOD::GET {
-            make_response(404, "Not found")
+            default_response
         } else if let Ok(v) = TEMPLATE.make_response(200, &request.path[1..], &args) { // TODO: Path operation
             v
         } else if let Ok(v) = TEMPLATE.make_response(404, "404.html", &args) {
             v
         } else {
-            make_response(404, "Not found")
+            default_response
         }
     };
-    if let Err(e) = stream.write_all(response.as_bytes()) {
+    if let Err(e) = stream.write_all(response.as_string().as_bytes()) {
         println!("Fail to response: {e:?}");
     }
 }
