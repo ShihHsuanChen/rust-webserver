@@ -25,12 +25,27 @@ impl Request<'_> {
         }
         // first line of the request: <method> <path> <protocol>
         let mut sp = request_first_line.split(" ");
-        let (method, path, protocol) = (
-            // http::METHOD::GET, "/".to_string(), http::PROTOCAL::HTTP_1_1,
-            http::get_method_from_str(sp.next().unwrap()).unwrap(),
-            sp.next().unwrap().trim().to_string(),
-            http::get_protocol_from_str(sp.next().unwrap()).unwrap(),
-        );
+        let parse_err = format!("Unknown request format {request_first_line}");
+
+        // method
+        let method_str = match sp.next() {
+            Some(v) => v, None => return Err(parse_err),
+        };
+        let method = match http::get_method_from_str(method_str) {
+            Ok(v) => v, Err(e) => return Err(e),
+        };
+        // path
+        let path = match sp.next() {
+            Some(v) => v, None => return Err(parse_err),
+        }.to_string();
+
+        // protocol
+        let protocol_str = match sp.next() {
+            Some(v) => v, None => return Err(parse_err),
+        };
+        let protocol = match http::get_protocol_from_str(protocol_str) {
+            Ok(v) => v, Err(e) => return Err(e),
+        };
 
         // let mut i = 1;
         // loop {
