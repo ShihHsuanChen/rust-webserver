@@ -1,74 +1,46 @@
 use std;
-use std::io::Write;
 use std::collections::HashMap;
-use std::net::{TcpListener, TcpStream};
 
-use webserver::thread_pool::ThreadPool;
-use webserver::http::{METHOD, PROTOCOL};
+// use webserver::thread_pool::ThreadPool;
 use webserver::response::{
     make_response,
     Template,
 };
-use webserver::request::Request;
 
 
 const TEMPLATE: Template<'_> = Template { root: "templates" };
 
 
-fn handle_connection(mut stream: TcpStream) {
-    println!("Connection established");
-    let request = match Request::from_stream(&stream) {
-        Ok(v) => v,
-        Err(msg) => {
-            println!("{}", msg);
-            return;
-        }
-    };
-    println!("{}", request);
-
-    let args = HashMap::new();
-
-    let default_response = make_response(404, String::from("Not found"));
-    let response = {
-        if request.protocol != PROTOCOL::HTTP_1_1 {
-            default_response
-        } else if request.method != METHOD::GET {
-            default_response
-        } else if let Ok(v) = TEMPLATE.make_response(200, &request.path[1..], &args) { // TODO: Path operation
-            v
-        } else if let Ok(v) = TEMPLATE.make_response(404, "404.html", &args) {
-            v
-        } else {
-            default_response
-        }
-    };
-    if let Err(e) = stream.write_all(response.as_string().as_bytes()) {
-        println!("Fail to response: {e:?}");
-    }
-}
+use webserver::app::App;
+use webserver::router::Router;
+use webserver::app::run;
 
 
 fn main() {
-    let pool = ThreadPool::new(4);
-    let ip_port = String::from("127.0.0.1:7878");
-    let listener = match TcpListener::bind(&ip_port) {
-        Ok(v) => v,
-        Err(_) => {
-            println!("Cannot bind {ip_port}, it is already used by other process.");
-            std::process::exit(1);
-        }
-    };
+    let mut app: App = App::new();
 
-    println!("Listening to {} ...", &ip_port);
+    let mut router = Router::new();
 
-    for stream in listener.incoming() {
-        let stream = match stream {
-            Ok(v) => v,
-            Err(_) => continue,
-        };
+    router.get("/favicon.ico", |(request, path_args)| {
+        make_response(404, String::from("NOT FOUND"))
+    });
+
+    router.get("/{file_name}", |(request, path_args)| {
+        let args = HashMap::<String, String>::new();
+        println!("{request}");
+        println!("{path_args:?}");
+        println!("{:?}", request.query);
         
-        pool.execute(|| {
-            handle_connection(stream);
-        });
-    }
+        let fname = &path_args["file_name"];
+        if let Ok(resp) = TEMPLATE.make_response(200, &fname, &args) {
+            resp
+        } else if let Ok(resp) = TEMPLATE.make_response(400, "404.html", &args) {
+            resp
+        } else {
+            make_response(404, String::from("NOT FOUND"))
+        }
+    });
+
+    app.include_router("", Box::new(router));
+    run(app, "127.0.0.1", 7878);
 }
