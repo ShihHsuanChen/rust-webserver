@@ -1,6 +1,10 @@
 use std;
+use std::collections::HashMap;
 use std::io::{prelude::*, BufReader};
 use std::net::TcpStream;
+
+use url::Url;
+
 use super::http;
 
 
@@ -8,6 +12,10 @@ pub struct Request<'a> {
     pub protocol: http::Protocol<'a>,
     pub method: http::Method<'a>,
     pub path: String,
+    pub username: Option<String>,
+    pub password: Option<String>,
+    pub query: HashMap<String, String>,
+    pub fragment: Option<String>,
 }
 
 impl Request<'_> {
@@ -34,10 +42,16 @@ impl Request<'_> {
         let method = match http::get_method_from_str(method_str) {
             Ok(v) => v, Err(e) => return Err(e),
         };
-        // path
-        let path = match sp.next() {
-            Some(v) => v, None => return Err(parse_err),
-        }.to_string();
+        let url = if let Some(v) = sp.next() {
+            // TODO: fake host?
+            if let Ok(_v) = Url::parse(&format!("http://localhost{v}")) {
+                _v
+            } else {
+                return Err(parse_err);
+            }
+        } else {
+            return Err(parse_err)
+        };
 
         // protocol
         let protocol_str = match sp.next() {
@@ -47,6 +61,7 @@ impl Request<'_> {
             Ok(v) => v, Err(e) => return Err(e),
         };
 
+        // TODO: Cannot get the request Body. why??
         // let mut i = 1;
         // loop {
         //     i += 1;
@@ -55,6 +70,7 @@ impl Request<'_> {
         //         Some(v) => match v {
         //             Ok(_v) => {
         //                 if _v.is_empty() {
+        //                     // TODO: this will truncate the request body
         //                     break;
         //                 } else {
         //                     request_second_line = _v;
@@ -66,7 +82,30 @@ impl Request<'_> {
         //     }
         //     println!("{i} {}", request_second_line);
         // }
-        Ok(Request { protocol, method, path })
+        Ok(Request {
+            protocol,
+            method,
+            path: url.path().to_string(),
+            username: Some(url.username().to_owned()),
+            password: match url.password() {
+                Some(v) => Some(v.to_owned()), None => None,
+            },
+            // query: HashMap::<String,String>::new(),
+            query: {
+                let mut tmp = HashMap::<String,String>::new();
+                let mut pairs = url.query_pairs();
+                while let Some(pair) = pairs.next() {
+                    tmp.insert(
+                        pair.0.into_owned().to_string(),
+                        pair.1.into_owned().to_string(),
+                    );
+                }
+                tmp
+            },
+            fragment: match url.fragment() {
+                Some(v) => Some(v.to_owned()), None => None,
+            }
+        })
     }
 }
 
