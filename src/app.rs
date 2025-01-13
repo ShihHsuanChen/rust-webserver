@@ -10,7 +10,6 @@ use crate::router::Router;
 
 pub struct App<'a> {
     router: Router<'a>,
-    // routers: RoutersMap<'a>, // prefix: routers
 }
 
 impl<'a> App<'a> {
