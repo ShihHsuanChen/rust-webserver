@@ -16,95 +16,193 @@ pub struct Request<'a> {
     pub password: Option<String>,
     pub query: HashMap<String, String>,
     pub fragment: Option<String>,
+    pub headers: HashMap<String,String>,
+    pub body: Vec<u8>,
 }
+
+
+fn parse_readout_first_line(line: String) -> Result<(http::Protocol<'static>, http::Method<'static>, Url), String> {
+    let mut sp = line.split(" ");
+    let parse_err = format!("Unknown request format {line}");
+
+    // method
+    let method_str = match sp.next() {
+        Some(v) => v, None => return Err(parse_err),
+    };
+    let method = match http::get_method_from_str(method_str) {
+        Ok(v) => v, Err(e) => return Err(e),
+    };
+    let url = if let Some(v) = sp.next() {
+        // TODO: fake host?
+        if let Ok(_v) = Url::parse(&format!("http://localhost{v}")) {
+            _v
+        } else {
+            return Err(parse_err);
+        }
+    } else {
+        return Err(parse_err)
+    };
+
+    // protocol
+    let protocol_str = match sp.next() {
+        Some(v) => v, None => return Err(parse_err),
+    };
+    let protocol = match http::get_protocol_from_str(protocol_str) {
+        Ok(v) => v, Err(e) => return Err(e),
+    };
+    Ok((protocol, method, url))
+}
+
+fn parse_readout_header_lines(line: String) -> Result<(String,String), String> {
+    match line.split_once(": ") {
+        Some(kv) => {
+            let (k, v) = kv;
+            Ok((String::from(k), String::from(v)))
+        },
+        None => Err(String::from("Fail to parse request header: {line}")),
+    }
+}
+
+struct ParseResult {
+    protocol: Option<http::Protocol<'static>>,
+    method: Option<http::Method<'static>>,
+    url: Option<Url>,
+    headers: Option<HashMap::<String,String>>,
+    body: Option<Vec<u8>>,
+}
+
+
+fn parse_readout(buf_reader: &mut BufReader<&TcpStream>) -> Result<ParseResult, String> {
+    let mut register: Vec<u8> = vec![];
+    let mut last: Option<u8> = None;
+    let mut iter = buf_reader.bytes();
+    let mut end_of_header = false;
+    let mut cl: u32 = 0;
+    let mut iline: u32 = 0;
+    // data
+    let mut headers = HashMap::<String,String>::new();
+    let mut result = ParseResult {
+        method: None,
+        protocol: None,
+        url: None,
+        headers: None,
+        body: None,
+    };
+    while let Some(byte) = iter.next() {
+        // println!("{end_of_header}");
+        match byte {
+            Ok(v) => {
+                if let Some(_v) = last {
+                    if _v == 13 && v == 10 { // append line
+                        match std::str::from_utf8(&register) {
+                            Ok(line) => {
+                                let _line = line.to_string();
+                                if _line == "" {
+                                    // blank line as the separator of header and body
+                                    end_of_header = true;
+                                    if cl <= 2 {
+                                        break;
+                                    }
+                                    cl -= 2;
+                                } else {
+                                    if iline == 0 {
+                                        match parse_readout_first_line(_line) {
+                                            Ok(v) => {
+                                                result.protocol = Some(v.0);
+                                                result.method = Some(v.1);
+                                                result.url = Some(v.2);
+                                            },
+                                            Err(e) => return Err(e),
+                                        }
+                                    } else {
+                                        match parse_readout_header_lines(_line) {
+                                            Ok(kv) => {
+                                                let (k, v) = kv;
+                                                if k == "Content-Length" {
+                                                    cl = v.parse().unwrap();
+                                                }
+                                                headers.insert(k, v);
+                                            },
+                                            Err(e) => return Err(e),
+                                        }
+                                    }
+                                    iline += 1;
+                                }
+                                register.clear();
+                                last = None;
+                            },
+                            Err(_) => {
+                                println!("Cannot parse {register:?}");
+                                register.push(_v);
+                                last = Some(v);
+                                continue;
+                            },
+                        }
+                    } else {
+                        register.push(_v);
+                        last = Some(v);
+                    }
+                } else if end_of_header { // body
+                    if cl > 0 {
+                        register.push(v);
+                        cl -= 1;
+                    } else {
+                        break;
+                    }
+                } else { // first or new line
+                    last = Some(v);
+                }
+            },
+            Err(_) => break,
+        }
+    }
+    result.headers = Some(headers);
+    result.body = Some(register);
+    Ok(result)
+}
+
 
 impl Request<'_> {
     pub fn from_stream(stream: &TcpStream) -> Result<Self, String> {
-        let buf_reader = BufReader::new(stream);
-        let mut request_lines = buf_reader.lines(); // NOTE: buf_reader.lines() call needs prelude::*
-        let request_first_line: String;
-
-        match request_lines.next() {
-            Some(v) => match v {
-                Ok(_v) => request_first_line = _v,
-                Err(_) => return Err(String::from("IO Error when reading stream"))
-            },
-            None => return Err(String::from("Bad request"))
-        }
-        // first line of the request: <method> <path> <protocol>
-        let mut sp = request_first_line.split(" ");
-        let parse_err = format!("Unknown request format {request_first_line}");
-
-        // method
-        let method_str = match sp.next() {
-            Some(v) => v, None => return Err(parse_err),
-        };
-        let method = match http::get_method_from_str(method_str) {
+        let mut buf_reader = BufReader::new(stream);
+        let res = match parse_readout(&mut buf_reader) {
             Ok(v) => v, Err(e) => return Err(e),
         };
-        let url = if let Some(v) = sp.next() {
-            // TODO: fake host?
-            if let Ok(_v) = Url::parse(&format!("http://localhost{v}")) {
-                _v
-            } else {
-                return Err(parse_err);
+        let protocol = res.protocol.unwrap();
+        let method = res.method.unwrap();
+        let url = res.url.unwrap();
+        let path = url.path().to_string();
+        let username = Some(url.username().to_owned());
+        let password = match url.password() {
+            Some(v) => Some(v.to_owned()), None => None,
+        };
+        let query = {
+            let mut tmp = HashMap::<String,String>::new();
+            let mut pairs = url.query_pairs();
+            while let Some(pair) = pairs.next() {
+                tmp.insert(
+                    pair.0.into_owned().to_string(),
+                    pair.1.into_owned().to_string(),
+                );
             }
-        } else {
-            return Err(parse_err)
+            tmp
         };
-
-        // protocol
-        let protocol_str = match sp.next() {
-            Some(v) => v, None => return Err(parse_err),
+        let fragment = match url.fragment() {
+            Some(v) => Some(v.to_owned()), None => None,
         };
-        let protocol = match http::get_protocol_from_str(protocol_str) {
-            Ok(v) => v, Err(e) => return Err(e),
-        };
-
-        // TODO: Cannot get the request Body. why??
-        // let mut i = 1;
-        // loop {
-        //     i += 1;
-        //     let request_second_line: String;
-        //     match request_lines.next() {
-        //         Some(v) => match v {
-        //             Ok(_v) => {
-        //                 if _v.is_empty() {
-        //                     // TODO: this will truncate the request body
-        //                     break;
-        //                 } else {
-        //                     request_second_line = _v;
-        //                 }
-        //             }
-        //             Err(e) => { println!(">>> Error: {e:?}"); break; return Err(String::from("IO Error when reading stream")) },
-        //         },
-        //         None => { println!(">>> Stop"); break; }, // return Err(String::from("Bad request"))
-        //     }
-        //     println!("{i} {}", request_second_line);
-        // }
+        let headers = res.headers.unwrap();
+        let body = res.body.unwrap();
+        println!("{headers:?}");
         Ok(Request {
             protocol,
             method,
-            path: url.path().to_string(),
-            username: Some(url.username().to_owned()),
-            password: match url.password() {
-                Some(v) => Some(v.to_owned()), None => None,
-            },
-            // query: HashMap::<String,String>::new(),
-            query: {
-                let mut tmp = HashMap::<String,String>::new();
-                let mut pairs = url.query_pairs();
-                while let Some(pair) = pairs.next() {
-                    tmp.insert(
-                        pair.0.into_owned().to_string(),
-                        pair.1.into_owned().to_string(),
-                    );
-                }
-                tmp
-            },
-            fragment: match url.fragment() {
-                Some(v) => Some(v.to_owned()), None => None,
-            }
+            path,
+            username,
+            password,
+            query,
+            fragment,
+            headers,
+            body,
         })
     }
 }
