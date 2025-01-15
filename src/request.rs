@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use std::io::{prelude::*, BufReader};
 use std::net::TcpStream;
 
+use json;
 use url::Url;
 
 use super::http;
@@ -60,6 +61,23 @@ fn parse_readout_header_lines(line: String) -> Result<(String,String), String> {
             Ok((String::from(k), String::from(v)))
         },
         None => Err(String::from("Fail to parse request header: {line}")),
+    }
+}
+
+pub fn parse_readout_body__json(buf: &Vec<u8>) -> Result<json::JsonValue,String> {
+    // buf should be able to convert to utf-8 string
+    match std::str::from_utf8(&buf) {
+        Ok(json_str) => {
+            println!("'{json_str}'");
+            match json::parse(json_str) {
+                Ok(v) => Ok(v),
+                Err(e) => {
+                    println!("{e:?}");
+                    Err(String::from("Not a valid json string"))
+                }
+            }
+        },
+        Err(_) => Err(String::from("Fail to convert binary to string."))
     }
 }
 
