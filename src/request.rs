@@ -148,70 +148,61 @@ fn parse_readout(buf_reader: &mut BufReader<&TcpStream>) -> Result<ParseResult, 
     };
     while let Some(byte) = iter.next() {
         // println!("{end_of_header}");
-        match byte {
-            Ok(v) => {
-                if let Some(_v) = last {
-                    if _v == 13 && v == 10 { // append line
-                        match std::str::from_utf8(&register) {
-                            Ok(line) => {
-                                let _line = line.to_string();
-                                if _line == "" {
-                                    // blank line as the separator of header and body
-                                    end_of_header = true;
-                                    if cl <= 1 {
-                                        break;
-                                    }
-                                    cl -= 1;
-                                } else {
-                                    if iline == 0 {
-                                        match parse_readout_first_line(_line) {
-                                            Ok(v) => {
-                                                result.protocol = Some(v.0);
-                                                result.method = Some(v.1);
-                                                result.url = Some(v.2);
-                                            },
-                                            Err(e) => return Err(e),
-                                        }
-                                    } else {
-                                        match parse_readout_header_lines(_line) {
-                                            Ok(kv) => {
-                                                let (k, v) = kv;
-                                                if k == "Content-Length" {
-                                                    cl = v.parse().unwrap();
-                                                }
-                                                headers.insert(k, v);
-                                            },
-                                            Err(e) => return Err(e),
-                                        }
-                                    }
-                                    iline += 1;
-                                }
-                                register.clear();
-                                last = None;
-                            },
-                            Err(_) => {
-                                println!("Cannot parse {register:?}");
-                                register.push(_v);
-                                last = Some(v);
-                                continue;
-                            },
-                        }
-                    } else {
-                        register.push(_v);
-                        last = Some(v);
+        if !byte.is_ok() { break; }
+        let v = byte.unwrap();
+        if let Some(_v) = last {
+            // not lineseq, append to register
+            if !(_v == 13 && v == 10) {
+                register.push(_v);
+                last = Some(v);
+                continue;
+            }
+            // meet lineseq line
+            if let Ok(line) = std::str::from_utf8(&register) {
+                let _line = line.to_string();
+                if _line == "" {
+                    // blank line as the separator of header and body
+                    end_of_header = true;
+                    if cl <= 1 { break; }
+                    cl -= 1;
+                } else if iline == 0 {
+                    match parse_readout_first_line(_line) {
+                        Ok(v) => {
+                            result.protocol = Some(v.0);
+                            result.method = Some(v.1);
+                            result.url = Some(v.2);
+                        },
+                        Err(e) => return Err(e),
                     }
-                } else if end_of_header { // body
-                    register.push(v);
-                    if cl > 0 {
-                        cl -= 1;
-                    } else {
-                        break;
+                } else {
+                    match parse_readout_header_lines(_line) {
+                        Ok(kv) => {
+                            let (k, v) = kv;
+                            if k == "Content-Length" {
+                                cl = v.parse().unwrap();
+                            }
+                            headers.insert(k, v);
+                        },
+                        Err(e) => return Err(e),
                     }
-                } else { // first or new line
-                    last = Some(v);
                 }
-            },
-            Err(_) => break,
+                iline += 1;
+                register.clear();
+                last = None;
+            } else {
+                println!("Cannot parse {register:?}");
+                register.push(_v);
+                last = Some(v);
+            }
+        } else if end_of_header { // body
+            register.push(v);
+            if cl > 0 {
+                cl -= 1;
+            } else {
+                break;
+            }
+        } else { // first or new line
+            last = Some(v);
         }
     }
     result.headers = Some(headers);
