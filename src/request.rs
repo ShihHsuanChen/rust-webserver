@@ -100,10 +100,10 @@ fn parse_readout(buf_reader: &mut BufReader<&TcpStream>) -> Result<ParseResult, 
                                 if _line == "" {
                                     // blank line as the separator of header and body
                                     end_of_header = true;
-                                    if cl <= 2 {
+                                    if cl <= 1 {
                                         break;
                                     }
-                                    cl -= 2;
+                                    cl -= 1;
                                 } else {
                                     if iline == 0 {
                                         match parse_readout_first_line(_line) {
@@ -143,8 +143,8 @@ fn parse_readout(buf_reader: &mut BufReader<&TcpStream>) -> Result<ParseResult, 
                         last = Some(v);
                     }
                 } else if end_of_header { // body
+                    register.push(v);
                     if cl > 0 {
-                        register.push(v);
                         cl -= 1;
                     } else {
                         break;
