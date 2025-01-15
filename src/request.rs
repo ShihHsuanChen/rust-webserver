@@ -210,7 +210,22 @@ impl Request<'_> {
 
 impl std::fmt::Display for Request<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Request(\r\n  protocol: {},\r\n  path: {},\r\n  method: {}\r\n)", self.protocol, self.path, self.method)
+        write!(f, 
+            "Request(\r\n\
+                protocol: {},\r\n    \
+                method: {},\r\n    \
+                path: {},\r\n    \
+                query: {:?},\r\n    \
+                fragment: {:?},\r\n    \
+                headers: {:?},\r\n\
+            )",
+            self.protocol,
+            self.method,
+            self.path,
+            self.query,
+            self.fragment,
+            self.headers,
+        )
     }
 }
 
