@@ -64,6 +64,22 @@ fn parse_readout_header_lines(line: String) -> Result<(String,String), String> {
     }
 }
 
+/// Content-Types:
+/// - text/plain
+/// - text/html
+/// - application/xml
+/// - application/json
+/// - application/javascript
+pub fn parse_readout_body__raw_text(buf: &Vec<u8>) -> Result<String,String> {
+    match std::str::from_utf8(&buf) {
+        Ok(s) => Ok(s.to_string()),
+        Err(_) => Err(String::from("Fail to convert binary to string."))
+    }
+
+}
+
+/// Content-Types:
+/// - application/javascript
 pub fn parse_readout_body__json(buf: &Vec<u8>) -> Result<json::JsonValue,String> {
     // buf should be able to convert to utf-8 string
     match std::str::from_utf8(&buf) {
@@ -81,12 +97,36 @@ pub fn parse_readout_body__json(buf: &Vec<u8>) -> Result<json::JsonValue,String>
     }
 }
 
+/// Content-Types:
+/// - application/x-www-form-urlencoded
+pub fn parse_readout_body__x_www_form_urlencoded(buf: &Vec<u8>) -> Result<HashMap<String,String>,String> {
+    match std::str::from_utf8(&buf) {
+        Ok(s) => {
+            Ok(parse_urlencoded(s))
+        },
+        Err(_) => Err(String::from("Fail to convert binary to string."))
+    }
+}
+
 struct ParseResult {
     protocol: Option<http::Protocol<'static>>,
     method: Option<http::Method<'static>>,
     url: Option<Url>,
     headers: Option<HashMap::<String,String>>,
     body: Option<Vec<u8>>,
+}
+
+
+pub fn parse_urlencoded(s: &str) -> HashMap<String,String> {
+    let mut tmp = HashMap::<String,String>::new();
+    let mut pairs = url::form_urlencoded::parse(s.as_bytes());
+    while let Some(pair) = pairs.next() {
+        tmp.insert(
+            pair.0.into_owned().to_string(),
+            pair.1.into_owned().to_string(),
+        );
+    }
+    tmp
 }
 
 
@@ -194,17 +234,7 @@ impl Request<'_> {
         let password = match url.password() {
             Some(v) => Some(v.to_owned()), None => None,
         };
-        let query = {
-            let mut tmp = HashMap::<String,String>::new();
-            let mut pairs = url.query_pairs();
-            while let Some(pair) = pairs.next() {
-                tmp.insert(
-                    pair.0.into_owned().to_string(),
-                    pair.1.into_owned().to_string(),
-                );
-            }
-            tmp
-        };
+        let query = parse_urlencoded(url.query().unwrap_or(""));
         let fragment = match url.fragment() {
             Some(v) => Some(v.to_owned()), None => None,
         };
