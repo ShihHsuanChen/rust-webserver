@@ -9,6 +9,9 @@ Please don't use this for any production.
 - `Cargo==1.83.0`
 
 ## Dependencies
+- `regex==1.11.1`
+- `url==2.5.4`
+- `json==0.12.4`
 
 ## Modules
 #### *mod* `webserver::http`
