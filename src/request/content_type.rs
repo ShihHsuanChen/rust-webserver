@@ -13,7 +13,7 @@ pub struct Binary {
     pub content: Vec<u8>,
 }
 
-pub type JsonValue = json::JsonValue;
+pub type Json = json::JsonValue;
 
 pub enum ContentType {
     Text(String),
