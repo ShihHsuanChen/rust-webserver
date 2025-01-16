@@ -14,6 +14,7 @@ const TEMPLATE: Template<'_> = Template { root: "templates" };
 use webserver::app::App;
 use webserver::router::Router;
 use webserver::app::run;
+use webserver::request::content_type::ContentType;
 
 
 fn main() {
@@ -23,6 +24,20 @@ fn main() {
 
     router.get("/favicon.ico", |(request, path_args)| {
         make_response(404, String::from("NOT FOUND"))
+    });
+
+    router.post("/user", |(request, path_args)| {
+        // read json
+        println!("call user");
+        println!("{request}");
+        match &request.body {
+            ContentType::Json(v) => {
+                make_response(200, v.dump())
+            },
+            _ => {
+                make_response(404, String::from("NOT FOUND"))
+            },
+        }
     });
 
     router.get("/{file_name}", |(request, path_args)| {
