@@ -16,9 +16,9 @@ pub fn make_response(status_code: u32, content: String) -> Response {
 
 
 pub struct Response {
-    status_code: u32,
-    headers: HashMap<String, String>, // TODO: 
-    body: String,
+    pub status_code: u32,
+    pub headers: HashMap<String, String>, // TODO: 
+    pub body: String,
 }
 
 // TODO: return bytes for non-text response?
