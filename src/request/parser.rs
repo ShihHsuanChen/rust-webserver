@@ -10,6 +10,125 @@ use super::http;
 use super::content_type::{File, Binary, ContentType};
 
 
+struct HeaderLine {
+    key: String,
+    value: String,
+    metadata: HashMap<String,String>,
+}
+
+pub struct ParseResult {
+    pub protocol: Option<http::Protocol<'static>>,
+    pub method: Option<http::Method<'static>>,
+    pub url: Option<Url>,
+    pub query: HashMap::<String,String>,
+    pub headers: Option<HashMap::<String,String>>,
+    pub body: Option<Vec<u8>>,
+    pub boundary: Option<String>,
+}
+
+
+pub fn parse_readout(buf_reader: &mut BufReader<&TcpStream>) -> Result<ParseResult, String> {
+    let mut register: Vec<u8> = vec![];
+    let mut last: Option<u8> = None;
+    let mut end_of_header = false;
+    let mut cl: u32 = 0;
+    let mut iline: u32 = 0;
+    // data
+    let mut headers = HashMap::<String,String>::new();
+    let mut result = ParseResult {
+        method: None,
+        protocol: None,
+        url: None,
+        headers: None,
+        body: None,
+        boundary: None,
+        query: HashMap::<String,String>::new(),
+    };
+    for byte in buf_reader.bytes() {
+        let v = byte.unwrap();
+        if let Some(_v) = last {
+            // not linesep, append to register
+            if !(_v == 13 && v == 10) {
+                register.push(_v);
+                last = Some(v);
+                continue;
+            }
+            // meet linesep line
+            if let Ok(line) = std::str::from_utf8(&register) {
+                let _line = line.to_string();
+                if _line == "" {
+                    // blank line as the separator of header and body
+                    end_of_header = true;
+                    if cl <= 1 { break; }
+                    cl -= 1;
+                } else if iline == 0 {
+                    match parse_readout_first_line(_line) {
+                        Ok(v) => {
+                            result.protocol = Some(v.0);
+                            result.method = Some(v.1);
+                            result.query = parse_urlencoded(v.2.query().unwrap_or(""));
+                            result.url = Some(v.2);
+                        },
+                        Err(e) => return Err(e),
+                    }
+                } else {
+                    match parse_readout_header_line(&_line) {
+                        Ok(h) => {
+                            let (hk, hv) = (h.key, h.value);
+                            if hk == "Content-Length" {
+                                cl = hv.parse().unwrap();
+                                headers.insert(hk, hv);
+                            } else if hk == "Content-Type" {
+                                if let Some(b) = h.metadata.get("boundary") {
+                                    result.boundary = Some(b.to_string());
+                                } else {
+                                    headers.insert(hk, hv);
+                                }
+                            } else {
+                                headers.insert(hk, hv);
+                            }
+                        },
+                        Err(e) => return Err(e),
+                    }
+                }
+                iline += 1;
+                register.clear();
+                last = None;
+            } else {
+                println!("Cannot parse {register:?}");
+                register.push(_v);
+                last = Some(v);
+            }
+        } else if end_of_header { // body
+            register.push(v);
+            if cl > 0 {
+                cl -= 1;
+            } else {
+                break;
+            }
+        } else { // first or new line
+            last = Some(v);
+        }
+    }
+    result.headers = Some(headers);
+    result.body = Some(register);
+    Ok(result)
+}
+
+
+pub fn parse_urlencoded(s: &str) -> HashMap<String,String> {
+    let mut tmp = HashMap::<String,String>::new();
+    let mut pairs = form_urlencoded::parse(s.as_bytes());
+    while let Some(pair) = pairs.next() {
+        tmp.insert(
+            pair.0.into_owned().to_string(),
+            pair.1.into_owned().to_string(),
+        );
+    }
+    tmp
+}
+
+
 fn parse_readout_first_line(line: String) -> Result<(http::Protocol<'static>, http::Method<'static>, Url), String> {
     let mut sp = line.split(" ");
     let parse_err = format!("Unknown request format {line}");
@@ -43,13 +162,6 @@ fn parse_readout_first_line(line: String) -> Result<(http::Protocol<'static>, ht
 }
 
 
-struct HeaderLine {
-    key: String,
-    value: String,
-    metadata: HashMap<String,String>,
-}
-
-
 fn parse_readout_header_line(line: &str) -> Result<HeaderLine, String> {
     // Example line:
     // Content-Disposition: form-data; name=\"b\"
@@ -80,6 +192,7 @@ fn parse_readout_header_line(line: &str) -> Result<HeaderLine, String> {
     }
 }
 
+
 /// Content-Types:
 /// - text/plain
 /// - text/html
@@ -94,6 +207,7 @@ pub fn parse_readout_body__text(buf: &Vec<u8>) -> Result<String,String> {
     }
 
 }
+
 
 /// Content-Types:
 /// - application/json
@@ -112,6 +226,7 @@ pub fn parse_readout_body__json(buf: &Vec<u8>) -> Result<json::JsonValue,String>
     }
 }
 
+
 /// Content-Types:
 /// - application/x-www-form-urlencoded
 pub fn parse_readout_body__x_www_form_urlencoded(buf: &Vec<u8>) -> Result<HashMap<String,ContentType>,String> {
@@ -125,6 +240,7 @@ pub fn parse_readout_body__x_www_form_urlencoded(buf: &Vec<u8>) -> Result<HashMa
         Err(String::from("Fail to convert binary to string."))
     }
 }
+
 
 // TODO: better way?
 /// Content-Types:
@@ -246,6 +362,7 @@ pub fn parse_readout_body__multipart(buf: &Vec<u8>, boundary: &str) -> Result<Ha
     Ok(res)
 }
 
+
 /// Content-Types:
 /// - application/x-www-form-urlencoded
 pub fn parse_readout_body__binary(buf: &Vec<u8>, content_type: &str) -> Result<ContentType,String> {
@@ -254,116 +371,3 @@ pub fn parse_readout_body__binary(buf: &Vec<u8>, content_type: &str) -> Result<C
         content: buf.to_vec(),
     }))
 }
-
-pub struct ParseResult {
-    pub protocol: Option<http::Protocol<'static>>,
-    pub method: Option<http::Method<'static>>,
-    pub url: Option<Url>,
-    pub query: HashMap::<String,String>,
-    pub headers: Option<HashMap::<String,String>>,
-    pub body: Option<Vec<u8>>,
-    pub boundary: Option<String>,
-}
-
-
-pub fn parse_urlencoded(s: &str) -> HashMap<String,String> {
-    let mut tmp = HashMap::<String,String>::new();
-    let mut pairs = form_urlencoded::parse(s.as_bytes());
-    while let Some(pair) = pairs.next() {
-        tmp.insert(
-            pair.0.into_owned().to_string(),
-            pair.1.into_owned().to_string(),
-        );
-    }
-    tmp
-}
-
-
-pub fn parse_readout(buf_reader: &mut BufReader<&TcpStream>) -> Result<ParseResult, String> {
-    let mut register: Vec<u8> = vec![];
-    let mut last: Option<u8> = None;
-    let mut end_of_header = false;
-    let mut cl: u32 = 0;
-    let mut iline: u32 = 0;
-    // data
-    let mut headers = HashMap::<String,String>::new();
-    let mut result = ParseResult {
-        method: None,
-        protocol: None,
-        url: None,
-        headers: None,
-        body: None,
-        boundary: None,
-        query: HashMap::<String,String>::new(),
-    };
-    for byte in buf_reader.bytes() {
-        let v = byte.unwrap();
-        if let Some(_v) = last {
-            // not linesep, append to register
-            if !(_v == 13 && v == 10) {
-                register.push(_v);
-                last = Some(v);
-                continue;
-            }
-            // meet linesep line
-            if let Ok(line) = std::str::from_utf8(&register) {
-                let _line = line.to_string();
-                if _line == "" {
-                    // blank line as the separator of header and body
-                    end_of_header = true;
-                    if cl <= 1 { break; }
-                    cl -= 1;
-                } else if iline == 0 {
-                    match parse_readout_first_line(_line) {
-                        Ok(v) => {
-                            result.protocol = Some(v.0);
-                            result.method = Some(v.1);
-                            result.query = parse_urlencoded(v.2.query().unwrap_or(""));
-                            result.url = Some(v.2);
-                        },
-                        Err(e) => return Err(e),
-                    }
-                } else {
-                    match parse_readout_header_line(&_line) {
-                        Ok(h) => {
-                            let (hk, hv) = (h.key, h.value);
-                            if hk == "Content-Length" {
-                                cl = hv.parse().unwrap();
-                                headers.insert(hk, hv);
-                            } else if hk == "Content-Type" {
-                                if let Some(b) = h.metadata.get("boundary") {
-                                    result.boundary = Some(b.to_string());
-                                } else {
-                                    headers.insert(hk, hv);
-                                }
-                            } else {
-                                headers.insert(hk, hv);
-                            }
-                        },
-                        Err(e) => return Err(e),
-                    }
-                }
-                iline += 1;
-                register.clear();
-                last = None;
-            } else {
-                println!("Cannot parse {register:?}");
-                register.push(_v);
-                last = Some(v);
-            }
-        } else if end_of_header { // body
-            register.push(v);
-            if cl > 0 {
-                cl -= 1;
-            } else {
-                break;
-            }
-        } else { // first or new line
-            last = Some(v);
-        }
-    }
-    result.headers = Some(headers);
-    result.body = Some(register);
-    Ok(result)
-}
-

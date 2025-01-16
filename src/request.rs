@@ -1,6 +1,6 @@
 use std;
 use std::collections::HashMap;
-use std::io::{prelude::*, BufReader};
+use std::io::BufReader;
 use std::net::TcpStream;
 
 use super::http;
