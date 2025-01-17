@@ -40,7 +40,7 @@ impl<'a> Route<'a> {
             .replace(".", "\\.")
             .replace("{", "(?<")
             .replace("}", ">[^/#?]+)");
-        println!("{}  {}", path, pattern);
+        let pattern = format!("^{pattern}$");
         let re = Regex::new(&pattern).unwrap();
         Route {
             method: get_method_from_str(method).unwrap(),
