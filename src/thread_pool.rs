@@ -1,6 +1,9 @@
 use std::sync::{mpsc, Arc, Mutex};
 
 
+pub type Job = Box<dyn FnOnce() + Send + 'static>;
+
+
 pub struct Worker {
     id: usize,
     thread: Option<std::thread::JoinHandle<()>>,
@@ -26,8 +29,6 @@ impl Worker {
 
 }
 
-
-pub type Job = Box<dyn FnOnce() + Send + 'static>;
 
 pub struct ThreadPool {
     workers: Vec<Worker>,
