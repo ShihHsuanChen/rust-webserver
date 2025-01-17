@@ -1,5 +1,8 @@
 use std;
 use std::collections::HashMap;
+use num_cpus;
+
+use clap::Parser;
 
 use webserver::response::{
     make_response,
@@ -12,6 +15,23 @@ use webserver::request::content_type::ContentType;
 
 
 const TEMPLATE: Template<'_> = Template { root: "templates" };
+
+
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct ArgumentParser {
+    /// IP address. For example: 127.0.0.1, 0.0.0.0, localhost
+    #[arg(short, long, default_value_t = String::from("localhost"))]
+    ip: String,
+
+    /// port number
+    #[arg(short, long, default_value_t = 5000)]
+    port: usize,
+
+    /// number of threads
+    #[arg(short, long, default_value_t = num_cpus::get())]
+    nthreads: usize,
+}
 
 
 fn get_ui_router() -> Router<'static> {
@@ -61,12 +81,13 @@ fn get_api_router() -> Router<'static> {
 }
 
 fn main() {
+    let args = ArgumentParser::parse();
     let mut app: App = App::new();
 
     app.include_router("", Box::new(get_ui_router()));
     app.include_router("/api", Box::new(get_api_router()));
 
-    match run_multithread(app, "127.0.0.1", 7878, 4) {
+    match run_multithread(app, &args.ip, args.port, args.nthreads) {
         Ok(_) => {},
         Err(e) => println!("{e}"),
     }

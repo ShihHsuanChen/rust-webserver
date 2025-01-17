@@ -7,3 +7,5 @@ edition = "2021"
 regex = "1.11.1"
 url = "2.5.4"
 json = "0.12.4"
+num_cpus = "1.0"
+clap = { version = "4.5.26", features = ["derive"] }
