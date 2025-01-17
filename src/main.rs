@@ -1,45 +1,24 @@
 use std;
 use std::collections::HashMap;
 
-// use webserver::thread_pool::ThreadPool;
 use webserver::response::{
     make_response,
     Template,
 };
-
-
-const TEMPLATE: Template<'_> = Template { root: "templates" };
-
-
 use webserver::app::App;
 use webserver::router::Router;
 use webserver::run::run_multithread;
 use webserver::request::content_type::ContentType;
 
 
-fn main() {
-    let mut app: App = App::new();
+const TEMPLATE: Template<'_> = Template { root: "templates" };
 
+
+fn get_ui_router() -> Router<'static> {
     let mut router = Router::new();
 
     router.get("/favicon.ico", |(request, path_args)| {
         make_response(404, String::from("NOT FOUND"))
-    });
-
-    router.post("/api/user", |(request, path_args)| {
-        // read json
-        println!("call user");
-        println!("{request}");
-        use std::{thread, time};
-        thread::sleep(time::Duration::from_secs(5));
-        match &request.body {
-            ContentType::Json(v) => {
-                make_response(200, v.dump())
-            },
-            _ => {
-                make_response(404, String::from("NOT FOUND"))
-            },
-        }
     });
 
     router.get("/{file_name}", |(request, path_args)| {
@@ -57,8 +36,36 @@ fn main() {
             make_response(404, String::from("NOT FOUND"))
         }
     });
+    router
+}
 
-    app.include_router("", Box::new(router));
+fn get_api_router() -> Router<'static> {
+    let mut router = Router::new();
+
+    router.post("/user", |(request, path_args)| {
+        // read json
+        println!("call user");
+        println!("{request}");
+        use std::{thread, time};
+        thread::sleep(time::Duration::from_secs(5));
+        match &request.body {
+            ContentType::Json(v) => {
+                make_response(200, v.dump())
+            },
+            _ => {
+                make_response(404, String::from("NOT FOUND"))
+            },
+        }
+    });
+    router
+}
+
+fn main() {
+    let mut app: App = App::new();
+
+    app.include_router("", Box::new(get_ui_router()));
+    app.include_router("/api", Box::new(get_api_router()));
+
     match run_multithread(app, "127.0.0.1", 7878, 4) {
         Ok(_) => {},
         Err(e) => println!("{e}"),
