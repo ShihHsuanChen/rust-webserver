@@ -13,7 +13,7 @@ const TEMPLATE: Template<'_> = Template { root: "templates" };
 
 use webserver::app::App;
 use webserver::router::Router;
-use webserver::app::run;
+use webserver::run::run_multithread;
 use webserver::request::content_type::ContentType;
 
 
@@ -26,10 +26,12 @@ fn main() {
         make_response(404, String::from("NOT FOUND"))
     });
 
-    router.post("/user", |(request, path_args)| {
+    router.post("/api/user", |(request, path_args)| {
         // read json
         println!("call user");
         println!("{request}");
+        use std::{thread, time};
+        thread::sleep(time::Duration::from_secs(5));
         match &request.body {
             ContentType::Json(v) => {
                 make_response(200, v.dump())
@@ -57,5 +59,8 @@ fn main() {
     });
 
     app.include_router("", Box::new(router));
-    run(app, "127.0.0.1", 7878);
+    match run_multithread(app, "127.0.0.1", 7878, 4) {
+        Ok(_) => {},
+        Err(e) => println!("{e}"),
+    }
 }
