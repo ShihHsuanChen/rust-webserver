@@ -55,7 +55,7 @@ pub fn parse_readout(buf_reader: &mut BufReader<&TcpStream>) -> Result<ParseResu
         let v = byte.unwrap();
         if let Some(_v) = last {
             // not linesep, append to register
-            if !(_v == 13 && v == 10) {
+            if !http::is_CRLF_bytes(&[_v,v]) {
                 register.push(_v);
                 last = Some(v);
                 continue;
@@ -139,7 +139,7 @@ pub fn parse_urlencoded(s: &str) -> HashMap<String,String> {
 fn parse_readout_status_line(line: String) -> Result<(http::Protocol<'static>, http::Method<'static>, Url), String> {
     //  Status-Line:
     //  HTTP-Version SP Status-Code SP Reason-Phrase CRLF
-    let mut sp = line.split(" ");
+    let mut sp = line.split(http::STATUS_SP);
     let parse_err = format!("Unknown request format {line}");
 
     // method
@@ -175,13 +175,10 @@ fn parse_readout_header_line(line: &str) -> Result<HeaderLine, String> {
     // Example line:
     // Content-Disposition: form-data; name=\"b\"
     // Content-Disposition: form-data; name=\"b\"; filename=\"abcabcabc.docx\"
-    let segs: Vec<_> = line.split("; ").collect();
-
-    if let Some(kv) = segs[0].split_once(": ") {
-        let (k, v) = kv;
-        let mut metadata = HashMap::<String,String>::new();
-        if segs.len() > 1 {
-            for seg in &segs[1..] {
+    match http::split_header_line(line) {
+        Ok(((key, value), metadata_vec)) => {
+            let mut metadata = HashMap::<String,String>::new();
+            for seg in metadata_vec.iter() {
                 if let Some(m) = seg.split_once("=") {
                     let (mk, mut mv) = m;
                     // unwrap \" from value
@@ -190,14 +187,15 @@ fn parse_readout_header_line(line: &str) -> Result<HeaderLine, String> {
                     metadata.insert(mk.to_string(), mv.to_string());
                 }
             }
+            Ok(HeaderLine {
+                key: key.to_string(),
+                value: value.to_string(),
+                metadata,
+            })
+        },
+        Err(e) => {
+            Err(String::from("Fail to parse request header: {line}"))
         }
-        Ok(HeaderLine {
-            key: k.to_string(),
-            value: v.to_string(),
-            metadata,
-        })
-    } else {
-        return Err(String::from("Fail to parse request header: {line}"));
     }
 }
 
@@ -281,7 +279,7 @@ pub fn parse_readout_body__multipart(buf: &Vec<u8>, boundary: &str) -> Result<Ha
     for v in buf.iter() {
         if let Some(_v) = last {
             // not linesep, append to register
-            if !(_v == 13 && *v == 10) {
+            if !http::is_CRLF_bytes(&[_v,*v]) {
                 register.push(_v);
                 last = Some(*v);
                 continue;
