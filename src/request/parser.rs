@@ -28,6 +28,13 @@ pub struct ParseResult {
 
 
 pub fn parse_readout(buf_reader: &mut BufReader<&TcpStream>) -> Result<ParseResult, String> {
+    // HTTP/1.1 Request:
+    //   Status-Line
+    //   *(( general-header
+    //   | request-header
+    //   | entity-header ) CRLF)
+    //   CRLF
+    //   [ message-body ]
     let mut register: Vec<u8> = vec![];
     let mut last: Option<u8> = None;
     let mut end_of_header = false;
@@ -62,7 +69,7 @@ pub fn parse_readout(buf_reader: &mut BufReader<&TcpStream>) -> Result<ParseResu
                     if cl <= 1 { break; }
                     cl -= 1;
                 } else if iline == 0 {
-                    match parse_readout_first_line(_line) {
+                    match parse_readout_status_line(_line) {
                         Ok(v) => {
                             result.protocol = Some(v.0);
                             result.method = Some(v.1);
@@ -129,7 +136,9 @@ pub fn parse_urlencoded(s: &str) -> HashMap<String,String> {
 }
 
 
-fn parse_readout_first_line(line: String) -> Result<(http::Protocol<'static>, http::Method<'static>, Url), String> {
+fn parse_readout_status_line(line: String) -> Result<(http::Protocol<'static>, http::Method<'static>, Url), String> {
+    //  Status-Line:
+    //  HTTP-Version SP Status-Code SP Reason-Phrase CRLF
     let mut sp = line.split(" ");
     let parse_err = format!("Unknown request format {line}");
 
