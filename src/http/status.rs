@@ -2,7 +2,7 @@ use std;
 
 
 pub struct Status<'a> {
-    pub code: u32,
+    pub code: usize,
     pub name: &'a str,
 }
 
@@ -79,7 +79,7 @@ pub mod STATUS {
     pub const NETWORK_AUTHENTICATION_REQUIRED: Status<'_> = Status { code: 511, name: "NETWORK AUTHENTICATION REQUIRED" };
 }
 
-pub fn get_status_from_code(code: u32) -> Result<Status<'static>, String> {
+pub fn get_status_from_code(code: usize) -> Result<Status<'static>, String> {
     for v in [
         STATUS::CONTINUE,
         STATUS::SWITCHING_PROTOCOLS,
