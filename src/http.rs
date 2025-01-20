@@ -15,13 +15,15 @@ impl<'a> std::fmt::Display for Method<'a> {
 }
 
 pub mod METHOD {
-    pub const GET: super::Method<'_>    = super::Method("GET");
-    pub const POST: super::Method<'_>   = super::Method("POST");
-    pub const PUT: super::Method<'_>    = super::Method("PUT");
-    pub const PATCH: super::Method<'_>  = super::Method("PATCH");
-    pub const DELETE: super::Method<'_> = super::Method("DELETE");
-    pub const HEAD: super::Method<'_>   = super::Method("HEAD");
-    pub const OPTION: super::Method<'_> = super::Method("OPTION");
+    pub const GET: super::Method<'_>     = super::Method("GET");
+    pub const POST: super::Method<'_>    = super::Method("POST");
+    pub const PUT: super::Method<'_>     = super::Method("PUT");
+    pub const PATCH: super::Method<'_>   = super::Method("PATCH");
+    pub const DELETE: super::Method<'_>  = super::Method("DELETE");
+    pub const HEAD: super::Method<'_>    = super::Method("HEAD");
+    pub const OPTIONS: super::Method<'_> = super::Method("OPTIONS");
+    pub const CONNECT: super::Method<'_> = super::Method("CONNECT");
+    pub const TRACE: super::Method<'_>   = super::Method("TRACE");
 }
 
 pub fn get_method_from_str(method_str: &str) -> Result<Method<'static>, String> {
@@ -32,7 +34,9 @@ pub fn get_method_from_str(method_str: &str) -> Result<Method<'static>, String> 
         METHOD::PATCH,
         METHOD::DELETE,
         METHOD::HEAD,
-        METHOD::OPTION,
+        METHOD::OPTIONS,
+        METHOD::CONNECT,
+        METHOD::TRACE,
     ] {
         if method_str == v.0 {
             return Ok(v)
