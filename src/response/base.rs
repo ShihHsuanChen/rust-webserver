@@ -59,17 +59,14 @@ pub trait MakeResponse {
         }
     }
 
-    fn write(&self, mut stream: TcpStream) -> std::io::Result<usize> {
-        let mut nbytes: usize = 0;
-        nbytes += stream.write(self.status_line().as_bytes())?;
-        nbytes += stream.write(self.header_lines().as_bytes())?;
-        nbytes += stream.write(CRLF.as_bytes())?;
-        stream.flush()?;
+    fn write(&self, mut stream: TcpStream) -> std::io::Result<()> {
+        stream.write_all(self.status_line().as_bytes())?;
+        stream.write_all(self.header_lines().as_bytes())?;
+        stream.write_all(CRLF.as_bytes())?;
         for bytes in self.messege_body() {
-            nbytes += stream.write(&bytes)?;
-            stream.flush()?;
+            stream.write_all(&bytes)?;
         }
-        Ok(nbytes)
+        Ok(())
     }
 }
 
