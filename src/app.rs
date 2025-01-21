@@ -1,10 +1,10 @@
-use std::io::Write;
 use std::net::TcpStream;
 
 use crate::request::Request;
 use crate::http::PROTOCOL;
-use crate::response::{make_response, Response};
+use crate::response::{make_text_response, MakeResponse};
 use crate::router::Router;
+use crate::router::ResponseResult;
 
 
 pub struct App<'a> {
@@ -20,35 +20,32 @@ impl<'a> App<'a> {
         self.router.include_router(prefix, router);
     }
 
-    pub fn route(&self, request: &Request) -> Option<Response> {
+    pub fn route(&self, request: &Request) -> Option<ResponseResult> {
         self.router.route(&request.path.to_string(), request)
     }
 
-    pub fn handle_connection(&self, mut stream: TcpStream) {
+    pub fn handle_connection(&self, stream: TcpStream) -> Result<(),String> {
         println!("Connection established");
-        let request = match Request::from_stream(&stream) {
-            Ok(v) => v,
-            Err(msg) => {
-                println!("{}", msg);
-                return;
-            }
-        };
+        let request = Request::from_stream(&stream)?;
         println!("{}", request);
 
         // let args = HashMap::<String, String>::new();
 
-        let default_response = make_response(404, String::from("Not found"));
-        let response = {
-            if request.protocol != PROTOCOL::HTTP_1_1 {
-                default_response
-            } else if let Some(resp) = self.route(&request) {
-                resp
-            } else {
-                default_response
-            }
-        };
-        if let Err(e) = stream.write_all(response.as_string().as_bytes()) {
-            println!("Fail to response: {e:?}");
+        let default_response = make_text_response(404, String::from("Not found"))?;
+        if request.protocol != PROTOCOL::HTTP_1_1 {
+            match default_response.write(stream) {
+                _ => (),
+            };
+        } else if let Some(resp) = self.route(&request) {
+            let resp = resp?;
+            match resp.write(stream) {
+                _ => (),
+            };
+        } else {
+            match default_response.write(stream) {
+                _ => (),
+            };
         }
+        Ok(())
     }
 }

@@ -5,7 +5,7 @@ use num_cpus;
 use clap::Parser;
 
 use webserver::response::{
-    make_response,
+    make_text_response,
     Template,
 };
 use webserver::app::App;
@@ -38,7 +38,7 @@ fn get_ui_router() -> Router<'static> {
     let mut router = Router::new();
 
     router.get("/favicon.ico", |(request, path_args)| {
-        make_response(404, String::from("NOT FOUND"))
+        Ok(Box::new(make_text_response(404, String::from("NOT FOUND"))?))
     });
 
     router.get("/{file_name}", |(request, path_args)| {
@@ -49,11 +49,11 @@ fn get_ui_router() -> Router<'static> {
         
         let fname = &path_args["file_name"];
         if let Ok(resp) = TEMPLATE.make_response(200, &fname, &args) {
-            resp
+            Ok(Box::new(resp))
         } else if let Ok(resp) = TEMPLATE.make_response(400, "404.html", &args) {
-            resp
+            Ok(Box::new(resp))
         } else {
-            make_response(404, String::from("NOT FOUND"))
+            Ok(Box::new(make_text_response(404, String::from("NOT FOUND"))?))
         }
     });
     router
@@ -70,10 +70,10 @@ fn get_api_router() -> Router<'static> {
         thread::sleep(time::Duration::from_secs(5));
         match &request.body {
             ContentType::Json(v) => {
-                make_response(200, v.dump())
+                Ok(Box::new(make_text_response(200, v.dump())?))
             },
             _ => {
-                make_response(404, String::from("NOT FOUND"))
+                Ok(Box::new(make_text_response(404, String::from("NOT FOUND"))?))
             },
         }
     });

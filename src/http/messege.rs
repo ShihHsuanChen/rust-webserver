@@ -1,4 +1,6 @@
+use std::collections::HashMap;
 
+pub type Headers = HashMap<String,(String,Vec<String>)>;
 
 pub const CRLF: &str = "\r\n";
 pub const STATUS_SP: &str = " ";

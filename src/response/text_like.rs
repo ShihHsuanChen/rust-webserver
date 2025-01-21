@@ -14,6 +14,9 @@ pub fn make_text_response(status_code: usize, content: String) -> Result<Respons
 pub struct HtmlContent (pub String);
 
 impl MakeContent for HtmlContent {
+    fn content_length(&self) -> usize {
+        self.0.len()
+    }
     fn content_type(&self) -> &str {
         "text/html"
     }
@@ -26,6 +29,9 @@ impl MakeContent for HtmlContent {
 pub struct TextContent (pub String);
 
 impl MakeContent for TextContent {
+    fn content_length(&self) -> usize {
+        self.0.len()
+    }
     fn content_type(&self) -> &str {
         "text/plain"
     }
@@ -38,6 +44,9 @@ impl MakeContent for TextContent {
 pub struct CssContent (pub String);
 
 impl MakeContent for CssContent {
+    fn content_length(&self) -> usize {
+        self.0.len()
+    }
     fn content_type(&self) -> &str {
         "text/css"
     }
@@ -50,6 +59,9 @@ impl MakeContent for CssContent {
 pub struct XmlContent (pub String);
 
 impl MakeContent for XmlContent {
+    fn content_length(&self) -> usize {
+        self.0.len()
+    }
     fn content_type(&self) -> &str {
         "application/xml"
     }
@@ -62,6 +74,9 @@ impl MakeContent for XmlContent {
 pub struct JavascriptContent (pub String);
 
 impl MakeContent for JavascriptContent {
+    fn content_length(&self) -> usize {
+        self.0.len()
+    }
     fn content_type(&self) -> &str {
         "application/javascript"
     }

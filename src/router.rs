@@ -7,11 +7,12 @@ use crate::http::{
     Method,
     get_method_from_str,
 };
-use crate::response::Response;
+use crate::response::{MakeResponse, Response};
 use crate::request::Request;
 
 
-type Callback = Box<dyn Fn((&Request, HashMap<String,String>)) -> Response + Send + 'static>;
+pub type ResponseResult = Result<Box<dyn MakeResponse>,String>;
+type Callback = Box<dyn Fn((&Request, HashMap<String,String>)) -> ResponseResult + Send + 'static>;
 
 struct Route<'a> {
     method: Method<'static>,
@@ -23,7 +24,7 @@ struct Route<'a> {
 impl<'a> Route<'a> {
     fn new<F>(path: &'a str, method: &str, f: F) -> Self
     where
-        F: Fn((&Request, HashMap<String,String>)) -> Response + Send + 'static 
+        F: Fn((&Request, HashMap<String,String>)) -> ResponseResult + Send + 'static 
     {
         // validate path 
         if !path.starts_with("/") {
@@ -50,7 +51,7 @@ impl<'a> Route<'a> {
         }
     }
 
-    fn execute(&self, path: &str, request: &Request) -> Option<Response> {
+    fn execute(&self, path: &str, request: &Request) -> Option<ResponseResult> {
         println!("54: matching {} with {}:", path, self.re.as_str());
         let path_args: HashMap<String, String> = match self.re.captures(path) {
             Some(caps) => {
@@ -95,49 +96,49 @@ impl<'a> Router<'a> {
 
     pub fn get<F>(&mut self, path: &'a str, f: F)
     where
-        F: Fn((&Request, HashMap<String,String>)) -> Response + Send + 'static 
+        F: Fn((&Request, HashMap<String,String>)) -> ResponseResult + Send + 'static 
     {
         self.add_route(Box::new(Route::new(path, "GET", f)));
     }
 
     pub fn post<F>(&mut self, path: &'a str, f: F)
     where
-        F: Fn((&Request, HashMap<String,String>)) -> Response + Send + 'static 
+        F: Fn((&Request, HashMap<String,String>)) -> ResponseResult + Send + 'static 
     {
         self.add_route(Box::new(Route::new(path, "POST", f)));
     }
 
     pub fn put<F>(&mut self, path: &'a str, f: F)
     where
-        F: Fn((&Request, HashMap<String,String>)) -> Response + Send + 'static 
+        F: Fn((&Request, HashMap<String,String>)) -> ResponseResult + Send + 'static 
     {
         self.add_route(Box::new(Route::new(path, "PUT", f)));
     }
 
     pub fn patch<F>(&mut self, path: &'a str, f: F)
     where
-        F: Fn((&Request, HashMap<String,String>)) -> Response + Send + 'static 
+        F: Fn((&Request, HashMap<String,String>)) -> ResponseResult + Send + 'static 
     {
         self.add_route(Box::new(Route::new(path, "PATCH", f)));
     }
 
     pub fn delete<F>(&mut self, path: &'a str, f: F)
     where
-        F: Fn((&Request, HashMap<String,String>)) -> Response + Send + 'static 
+        F: Fn((&Request, HashMap<String,String>)) -> ResponseResult + Send + 'static 
     {
         self.add_route(Box::new(Route::new(path, "DELETE", f)));
     }
 
     pub fn option<F>(&mut self, path: &'a str, f: F)
     where
-        F: Fn((&Request, HashMap<String,String>)) -> Response + Send + 'static 
+        F: Fn((&Request, HashMap<String,String>)) -> ResponseResult + Send + 'static 
     {
         self.add_route(Box::new(Route::new(path, "OPTION", f)));
     }
 
     pub fn head<F>(&mut self, path: &'a str, f: F)
     where
-        F: Fn((&Request, HashMap<String,String>)) -> Response + Send + 'static 
+        F: Fn((&Request, HashMap<String,String>)) -> ResponseResult + Send + 'static 
     {
         self.add_route(Box::new(Route::new(path, "HEAD", f)));
     }
@@ -169,7 +170,7 @@ impl<'a> Router<'a> {
         entry.push(router);
     }
 
-    pub fn route(&self, path: &str, request: &Request) -> Option<Response> {
+    pub fn route(&self, path: &str, request: &Request) -> Option<ResponseResult> {
         // TODO: implemented in a very stupid way, try to optimized later
         for (_path, routes) in self.endpoints.iter() {
             println!("175: matching {} with {}", path, _path);

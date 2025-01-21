@@ -19,21 +19,13 @@ pub trait MakeResponse {
     // attributes
     fn protocol(&self) -> &http::Protocol<'static>;
     fn status(&self) -> &http::Status<'static>;
-    fn headers(&self) -> &HashMap<String,(String,Vec<String>)>; // key,value,metadata
-    fn content_length(&self) -> usize {
-        // count directly by default
-        let mut cnt: usize = 0;
-        for bytes in self.messege_body() {
-            cnt += bytes.len();
-        }
-        cnt
-    }
-    fn messege_body(&self) -> impl Iterator<Item=Vec<u8>>;
+    fn headers(&self) -> &http::Headers; // key,value,metadata
+    fn messege_body(&self) -> Vec<Vec<u8>>;
 
     // derived attributes
     fn status_line(&self) -> String {
         // HTTP-Version SP Status-Code SP Reason-Phrase CRLF
-        format!("{}{STATUS_SP}{}{STATUS_SP}{}",
+        format!("{}{STATUS_SP}{}{STATUS_SP}{}{CRLF}",
             self.protocol(),
             self.status().code,
             self.status().name,
@@ -44,11 +36,7 @@ pub trait MakeResponse {
         let mut s = String::from("");
         for (key, (value, metadata)) in self.headers().iter() {
             s.push_str(&format!("{key}{HEADER_SP} "));
-            if key == "Content-length" {
-                s.push_str(&self.content_length().to_string());
-            } else {
-                s.push_str(value);
-            }
+            s.push_str(value);
             for item in metadata.iter() {
                 s.push_str(&format!("{HEADER_META_SP} {item}"));
             }
@@ -86,6 +74,19 @@ pub trait MakeResponse {
 }
 
 pub trait MakeContent {
+    fn headers(&self) -> http::Headers {
+        let mut headers = http::Headers::new();
+        headers.insert(
+            String::from("Content-Length"),
+            (self.content_length().to_string(), vec![])
+        );
+        headers.insert(
+            String::from("Content-Type"),
+            (self.content_type().to_string(), vec![])
+        );
+        headers
+    }
+    fn content_length(&self) -> usize;
     fn content_type(&self) -> &str;
     fn into_bytes(&self) -> Vec<u8>;
 }
@@ -94,25 +95,24 @@ pub trait MakeContent {
 pub struct Response<T: MakeContent> {
     protocol: http::Protocol<'static>,
     status: http::Status<'static>,
-    headers: HashMap<String,(String,Vec<String>)>, // key,value,metadata
+    headers: http::Headers, // key,value,metadata
     content: T
 }
 
 impl<T: MakeContent> Response<T> {
     pub fn new(
         status_code: usize,
-        headers: HashMap<String,(String,Vec<String>)>,
+        mut headers: http::Headers,
         content: T,
     ) -> Result<Self,String> {
         let status = http::get_status_from_code(status_code)?;
+        headers.extend(content.headers());
         Ok(Response::<T> {
             protocol: http::PROTOCOL::HTTP_1_1,
             status,
             headers,
             content,
         })
-
-
     }
 }
 
@@ -123,11 +123,11 @@ impl<T: MakeContent> MakeResponse for Response<T> {
     fn status(&self) -> &http::Status<'static> {
         &self.status
     }
-    fn headers(&self) -> &HashMap<String,(String,Vec<String>)> {
+    fn headers(&self) -> &http::Headers {
         &self.headers
     }
-    fn messege_body(&self) -> impl Iterator<Item=Vec<u8>> {
+    fn messege_body(&self) -> Vec<Vec<u8>> {
         let vec: Vec<Vec<u8>> = vec![self.content.into_bytes()];
-        vec.into_iter()
+        vec
     }
 }

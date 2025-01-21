@@ -17,6 +17,9 @@ pub fn make_json_response(status_code: usize, content: Json) -> Result<Response<
 pub struct JsonContent (pub Json);
 
 impl MakeContent for JsonContent {
+    fn content_length(&self) -> usize {
+        self.0.dump().len()
+    }
     fn content_type(&self) -> &str {
         "application/json"
     }
