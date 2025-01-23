@@ -508,20 +508,3 @@ where T: FieldValidate
         }
     }
 }
-
-
-fn test() -> ValidationResult<()> {
-    let a = Text::new().parse("asdasd")?;
-    println!("String: {}", a);
-    let a = Integer::<i32>::new().parse("1111")?;
-    println!("i32: {}", a);
-    let a = Float::<f32>::new().parse("1111.")?;
-    println!("f32: {}", a);
-    let a = AnyJson::new().parse("[1,2,3,4]")?;
-    println!("json: {}", a.get(0).unwrap());
-    let a = Array::<Text>::new().parse("1111.")?;
-    println!("array: {:?}", a);
-    let a = Array::<Text>::new().parse("{\"a\": 1}")?;
-    println!("object: {:?}", a);
-    Ok(())
-}
