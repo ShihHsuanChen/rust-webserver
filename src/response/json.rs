@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 
-use crate::request::content_type::Json;
+use crate::json::{JsonValue, dump as json_dump};
 
 use super::{Response, MakeContent};
 
 
-pub fn make_json_response(status_code: usize, content: Json) -> Result<Response<JsonContent>,String> {
+pub fn make_json_response(status_code: usize, content: JsonValue) -> Result<Response<JsonContent>,String> {
     Ok(Response::<JsonContent>::new(
         status_code,
         HashMap::new(),
@@ -14,16 +14,24 @@ pub fn make_json_response(status_code: usize, content: Json) -> Result<Response<
 }
 
 
-pub struct JsonContent (pub Json);
+pub struct JsonContent (pub JsonValue);
 
 impl MakeContent for JsonContent {
     fn content_length(&self) -> usize {
-        self.0.dump().len()
+        if let Ok(v) = json_dump(&self.0) {
+            v.len()
+        } else {
+            0
+        }
     }
     fn content_type(&self) -> &str {
         "application/json"
     }
     fn into_bytes(&self) -> Vec<u8> {
-        self.0.dump().into_bytes()
+        if let Ok(v) = json_dump(&self.0) {
+            v.into_bytes()
+        } else {
+            vec![]
+        }
     }
 }

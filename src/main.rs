@@ -8,6 +8,7 @@ use webserver::response::{
     make_text_response,
     Template,
 };
+use webserver::json;
 use webserver::app::App;
 use webserver::router::Router;
 use webserver::run::run_multithread;
@@ -70,7 +71,7 @@ fn get_api_router() -> Router<'static> {
         thread::sleep(time::Duration::from_secs(5));
         match &request.body {
             ContentType::Json(v) => {
-                Ok(Box::new(make_text_response(200, v.dump())?))
+                Ok(Box::new(make_text_response(200, json::dump(v)?)?))
             },
             _ => {
                 Ok(Box::new(make_text_response(404, String::from("NOT FOUND"))?))

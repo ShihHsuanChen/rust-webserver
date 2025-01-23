@@ -28,6 +28,8 @@ impl<'a> App<'a> {
         println!("Connection established");
         let request = Request::from_stream(&stream)?;
         println!("{}", request);
+        // TODO: validate from schema
+        // TODO: handle validation error
 
         // let args = HashMap::<String, String>::new();
 
@@ -38,6 +40,7 @@ impl<'a> App<'a> {
             };
         } else if let Some(resp) = self.route(&request) {
             let resp = resp?;
+            // TODO: error to error response
             match resp.write(stream) {
                 _ => (),
             };

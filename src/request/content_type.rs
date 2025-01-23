@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use crate::json::JsonValue;
+
 
 pub struct File {
     pub filename: String,
@@ -13,12 +15,10 @@ pub struct Binary {
     pub content: Vec<u8>,
 }
 
-pub type Json = json::JsonValue;
-
 pub enum ContentType {
     Text(String),
     File(File),
-    Json(json::JsonValue),
+    Json(JsonValue),
     Form(HashMap<String,ContentType>),
     Binary(Binary),
     None,

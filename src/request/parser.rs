@@ -3,9 +3,9 @@ use std::collections::HashMap;
 use std::io::{prelude::*, BufReader};
 use std::net::TcpStream;
 
-use json;
 use url::{Url, form_urlencoded};
 
+use crate::json;
 use super::http;
 use super::content_type::{File, Binary, ContentType};
 
