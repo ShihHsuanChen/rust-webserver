@@ -11,6 +11,7 @@ use webserver::response::{
 use webserver::json;
 use webserver::app::App;
 use webserver::router::Router;
+use webserver::middleware::parse_request;
 use webserver::run::run_multithread;
 use webserver::schema::{Common, AnyJson, Location, HasDefault, FieldValidate};
 
@@ -76,7 +77,7 @@ fn get_api_router() -> Router<'static> {
             },
             schema: None,
         };
-        match parser.parse_request(&request, &path_args) {
+        match parse_request(parser.clone(), &request, &path_args) {
             Ok(Some(v)) => {
                 Ok(Box::new(make_text_response(200, json::dump(&v)?)?))
             },

@@ -25,6 +25,7 @@ where F: Fn(&T) -> bool {
 }
 
 
+#[derive(Clone)]
 pub struct Integer<T> {
     pub common: Common<T>,
     pub gt: Option<T>,
@@ -121,6 +122,7 @@ where T: num::Integer + std::str::FromStr + std::fmt::Display + std::fmt::Debug 
 }
 
 
+#[derive(Clone)]
 pub struct Float<T> {
     pub common: Common<T>,
     pub gt: Option<T>,
@@ -204,6 +206,7 @@ where T: num::Float + std::str::FromStr + std::fmt::Display + std::fmt::Debug + 
     }
 }
 
+#[derive(Clone)]
 pub struct Text {
     pub common: Common<String>,
     pub min_len: Option<usize>,
@@ -278,6 +281,7 @@ impl FieldValidate for Text {
     }
 }
 
+#[derive(Clone)]
 pub struct Bool {
     pub common: Common<bool>,
 }
@@ -311,9 +315,10 @@ impl FieldValidate for Bool {
 }
 
 
+#[derive(Clone)]
 pub struct AnyJson {
     pub common: Common<json::JsonValue>,
-    pub schema: Option<json::JsonValidator>,
+    pub schema: Option<json::JsonValue>,
 }
 impl HasDefault for AnyJson {
     fn new() -> Self {
@@ -343,17 +348,31 @@ impl FieldValidate for AnyJson {
         }
     }
     fn _validate_post(&self, errs: &mut ValidationErrors, value: &Self::Type) {
-        if !some_if(&self.schema, |validator| validator.is_valid(value)) {
-            errs.push(ValidationError {
-                location: self.location(), field: None, reason: format!(
-                    "value is not match the schema",
-                ),
-            });
+        if let Some(schema) = &self.schema {
+            let validator = match json::JsonValidator::new(schema.clone()) {
+                Ok(v) => v,
+                Err(e) => {
+                    errs.push(ValidationError {
+                        location: self.location(),
+                        field: None,
+                        reason: e.to_string(),
+                    });
+                    return;
+                }
+            };
+            if !validator.is_valid(value) {
+                errs.push(ValidationError {
+                    location: self.location(),
+                    field: None,
+                    reason: format!("value is not match the schema"),
+                });
+            }
         }
     }
 }
 
 
+#[derive(Clone)]
 pub struct File {
     pub common: Common<FileCursor>,
     pub allowed_exts: Option<Vec<String>>,
@@ -393,6 +412,7 @@ impl FieldValidate for File {
     }
 }
 
+#[derive(Clone)]
 pub struct Binary {
     pub common: Common<Vec<u8>>,
 }
@@ -418,6 +438,7 @@ impl FieldValidate for Binary {
 }
 
 
+#[derive(Clone)]
 pub struct Array<T>
 where T: FieldValidate
 {
@@ -523,6 +544,7 @@ where T: FieldValidate
 }
 
 
+#[derive(Clone)]
 pub struct Mapping<T>
 where T: FieldValidate
 {

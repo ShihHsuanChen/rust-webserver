@@ -1,6 +1,7 @@
 pub mod http;
 pub mod json;
 pub mod request;
+pub mod middleware;
 pub mod response;
 pub mod schema;
 pub mod thread_pool;
