@@ -12,7 +12,6 @@ use content_type::ContentType;
 use parser::{
     parse_readout,
     parse_readout_body__text,
-    parse_readout_body__json,
     parse_readout_body__x_www_form_urlencoded,
     parse_readout_body__multipart,
     parse_readout_body__binary,
@@ -56,46 +55,41 @@ impl Request<'_> {
         // content-type
         let none = String::from("none");
         let content_type = &headers.get("Content-Type").unwrap_or(&none)[..];
-        let content = match content_type {
+        let content: ContentType = match content_type {
             "multipart/form-data" => {
                 if body_boundary.is_none() {
                     return Err(String::from("Multipart/form-data boundary not found"));
                 }
                 let boundary = body_boundary.unwrap();
                 match parse_readout_body__multipart(&body, &boundary) {
-                    Ok(res) => ContentType::Form(res),
-                    Err(e) => return Err(e),
-                }
-            },
-            "application/json" => {
-                match parse_readout_body__json(&body) {
-                    Ok(res) => ContentType::Json(res),
+                    Ok(res) => Some(res),
                     Err(e) => return Err(e),
                 }
             },
             "application/x-www-form-urlencoded" => {
                 match parse_readout_body__x_www_form_urlencoded(&body) {
-                    Ok(res) => ContentType::Form(res),
+                    Ok(res) => Some(res),
                     Err(e) => return Err(e),
                 }
             },
+            "application/json" | 
             "application/javascript" | "text/javascript" |
             "application/css" | "text/css" |
             "text/html" | "text/plain" |
             "application/xml" | "text/xml" => {
-                match parse_readout_body__text(&body) {
-                    Ok(res) => ContentType::Text(res),
+                match parse_readout_body__text(&body, content_type) {
+                    Ok(res) => Some(res),
                     Err(e) => return Err(e),
                 }
             },
             "none" => {
-                match parse_readout_body__binary(&body, &content_type) {
-                    Ok(res) => res,
-                    Err(e) => return Err(e),
-                }
+                None
             },
             _ => {
-                ContentType::None
+                match parse_readout_body__binary(&body, content_type) {
+                    Ok(res) => Some(res),
+                    Err(e) => return Err(e),
+                }
             }
         };
         Ok(Request {

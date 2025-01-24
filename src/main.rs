@@ -12,7 +12,7 @@ use webserver::json;
 use webserver::app::App;
 use webserver::router::Router;
 use webserver::run::run_multithread;
-use webserver::request::content_type::ContentType;
+use webserver::schema::{Common, AnyJson, Location, HasDefault, FieldValidate};
 
 
 const TEMPLATE: Template<'_> = Template { root: "templates" };
@@ -67,15 +67,28 @@ fn get_api_router() -> Router<'static> {
         // read json
         println!("call user");
         println!("{request}");
-        use std::{thread, time};
-        thread::sleep(time::Duration::from_secs(5));
-        match &request.body {
-            ContentType::Json(v) => {
-                Ok(Box::new(make_text_response(200, json::dump(v)?)?))
+        let parser: AnyJson = AnyJson {
+            common: Common {
+                required: true,
+                location: Location::Body,
+                default: None,
+                field: None,
             },
-            _ => {
+            schema: None,
+        };
+        match parser.parse_request(&request, &path_args) {
+            Ok(Some(v)) => {
+                Ok(Box::new(make_text_response(200, json::dump(&v)?)?))
+            },
+            Ok(None) => {
                 Ok(Box::new(make_text_response(404, String::from("NOT FOUND"))?))
-            },
+            }
+            Err(errs) => {
+                for err in errs {
+                    println!("{:?}", err);
+                }
+                Ok(Box::new(make_text_response(406, String::from("Bad Request"))?))
+            }
         }
     });
     router

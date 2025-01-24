@@ -5,9 +5,15 @@ use std::net::TcpStream;
 
 use url::{Url, form_urlencoded};
 
-use crate::json;
 use super::http;
-use super::content_type::{File, Binary, ContentType};
+use super::content_type::{
+    FileCursor,
+    TextContent,
+    FileContent,
+    BinaryContent,
+    FormContent,
+    HasContent,
+};
 
 
 struct HeaderLine {
@@ -16,7 +22,7 @@ struct HeaderLine {
     metadata: HashMap<String,String>,
 }
 
-pub struct ParseResult {
+pub struct ParseResultData {
     pub protocol: Option<http::Protocol<'static>>,
     pub method: Option<http::Method<'static>>,
     pub url: Option<Url>,
@@ -26,8 +32,10 @@ pub struct ParseResult {
     pub boundary: Option<String>,
 }
 
+type BodyResult = Result<Box<dyn HasContent>, String>;
 
-pub fn parse_readout(buf_reader: &mut BufReader<&TcpStream>) -> Result<ParseResult, String> {
+
+pub fn parse_readout(buf_reader: &mut BufReader<&TcpStream>) -> Result<ParseResultData, String> {
     // HTTP/1.1 Request:
     //   Status-Line
     //   *(( general-header
@@ -42,7 +50,7 @@ pub fn parse_readout(buf_reader: &mut BufReader<&TcpStream>) -> Result<ParseResu
     let mut iline: u32 = 0;
     // data
     let mut headers = HashMap::<String,String>::new();
-    let mut result = ParseResult {
+    let mut result = ParseResultData {
         method: None,
         protocol: None,
         url: None,
@@ -206,43 +214,38 @@ fn parse_readout_header_line(line: &str) -> Result<HeaderLine, String> {
 /// - text/css
 /// - application/xml
 /// - application/javascript
-/// - ...
-pub fn parse_readout_body__text(buf: &Vec<u8>) -> Result<String,String> {
-    match std::str::from_utf8(&buf) {
-        Ok(s) => Ok(s.to_string()),
-        Err(_) => Err(String::from("Fail to convert binary to string."))
-    }
-
-}
-
-
-/// Content-Types:
 /// - application/json
-pub fn parse_readout_body__json(buf: &Vec<u8>) -> Result<json::JsonValue,String> {
-    // buf should be able to convert to utf-8 string
+/// - ...
+pub fn parse_readout_body__text(buf: &Vec<u8>, content_type: &str) -> BodyResult {
     match std::str::from_utf8(&buf) {
-        Ok(json_str) => {
-            match json::parse(json_str) {
-                Ok(v) => Ok(v),
-                Err(e) => {
-                    Err(String::from("Not a valid json string"))
-                }
-            }
-        },
+        Ok(s) => Ok(Box::new(TextContent {
+            content_type: content_type.to_string(),
+            content: s.to_string(),
+        })),
         Err(_) => Err(String::from("Fail to convert binary to string."))
     }
+
 }
 
 
 /// Content-Types:
 /// - application/x-www-form-urlencoded
-pub fn parse_readout_body__x_www_form_urlencoded(buf: &Vec<u8>) -> Result<HashMap<String,ContentType>,String> {
+pub fn parse_readout_body__x_www_form_urlencoded(buf: &Vec<u8>) -> BodyResult {
     if let Ok(s) = std::str::from_utf8(&buf) {
-        let mut res = HashMap::<String,ContentType>::new();
+        let mut res = HashMap::<String,Box<dyn HasContent>>::new();
         for (k,v) in parse_urlencoded(s) {
-            res.insert(k, ContentType::Text(v));
+            res.insert(
+                k,
+                Box::new(TextContent {
+                    content_type: "".to_string(),
+                    content: v,
+                })
+            );
         }
-        Ok(res)
+        Ok(Box::new(FormContent {
+            content_type: "application/x-www-form-urlencoded".to_string(),
+            content: res,
+        }))
     } else {
         Err(String::from("Fail to convert binary to string."))
     }
@@ -252,7 +255,7 @@ pub fn parse_readout_body__x_www_form_urlencoded(buf: &Vec<u8>) -> Result<HashMa
 // TODO: better way?
 /// Content-Types:
 /// - multipart/form-data
-pub fn parse_readout_body__multipart(buf: &Vec<u8>, boundary: &str) -> Result<HashMap<String,ContentType>,String> {
+pub fn parse_readout_body__multipart(buf: &Vec<u8>, boundary: &str) -> BodyResult {
     // boundary=--------------------------896280056578890900126354
     /* Example
     ----------------------------896280056578890900126354
@@ -325,7 +328,7 @@ pub fn parse_readout_body__multipart(buf: &Vec<u8>, boundary: &str) -> Result<Ha
             last = Some(*v);
         }
     }
-    let mut res = HashMap::<String,ContentType>::new();
+    let mut res = HashMap::<String,Box<dyn HasContent>>::new();
     for (block,content) in blocks.iter() {
         let mut headers = HashMap::<String, HeaderLine>::new();
         for line in block.iter() {
@@ -335,46 +338,74 @@ pub fn parse_readout_body__multipart(buf: &Vec<u8>, boundary: &str) -> Result<Ha
         }
         if let Some(header) = headers.get("content-Disposition") {
             if let Some(key) = header.metadata.get("name") {
+                let content_type = match header.metadata.get("Content-Type") {
+                    Some(v) => v.to_string(),
+                    None => "".to_string(),
+                };
                 if let Some(filename) = header.metadata.get("filename") {
                     // File
-                    let v = ContentType::File(File {
-                        filename: filename.to_string(),
-                        filename_encoded: {
-                            header.metadata.get("filename*")
-                            .unwrap_or(filename)
-                            .to_string()
-                        },
-                        content_type: {
-                            match header.metadata.get("Content-Type") {
-                                Some(v) => Some(v.to_string()),
-                                None => None,
-                            }
-                        },
-                        content: content.to_vec(),
-                    });
-                    res.insert(key.to_string(), v);
+                    res.insert(
+                        key.to_string(),
+                        Box::new(FileContent {
+                            filename: filename.to_string(),
+                            filename_encoded: {
+                                header.metadata.get("filename*")
+                                .unwrap_or(filename)
+                                .to_string()
+                            },
+                            content_type,
+                            content: FileCursor::new(
+                                filename.to_string(),
+                                content.to_vec(),
+                            )
+                        })
+                    );
                 } else if let Ok(s) = std::str::from_utf8(content) {
-                    let v = ContentType::Text(s.to_string());
-                    res.insert(key.to_string(), v);
+                    res.insert(
+                        key.to_string(),
+                        Box::new(TextContent {
+                            content_type,
+                            content: s.to_string(),
+                        })
+                    );
                 } else {
                     println!("Fail to parse mutipart/form-data content of '{key}'");
                 }
             } else {
-                // No name
+                // TODO: No name
             }
         } else {
-            // No Content-Disposition
+            // TODO: No Content-Disposition
         }
     }
-    Ok(res)
+    Ok(Box::new(FormContent {
+        content_type: "multipart/form-data".to_string(),
+        content: res,
+    }))
 }
 
 
 /// Content-Types:
-/// - application/x-www-form-urlencoded
-pub fn parse_readout_body__binary(buf: &Vec<u8>, content_type: &str) -> Result<ContentType,String> {
-    Ok(ContentType::Binary( Binary {
-        content_type: Some(content_type.to_string()),
-        content: buf.to_vec(),
-    }))
+/// - image/jpeg
+/// - image/png
+/// - image/gif
+/// - application/vnd.openxmlformats-officedocument.wordprocessingml.document
+/// - application/pdf
+/// - application/zip
+/// - ...
+pub fn parse_readout_body__binary(buf: &Vec<u8>, content_type: &str) -> BodyResult {
+    if content_type == "" {
+        Ok(Box::new(BinaryContent {
+            content_type: "".to_string(),
+            content: buf.to_vec(),
+        }))
+    } else {
+        let filename = "download".to_string(); // from src
+        Ok(Box::new( FileContent {
+            filename: filename.clone(), // TODO: from src
+            filename_encoded: filename.clone(), // TODO: from src
+            content_type: content_type.to_string(),
+            content: FileCursor::new(filename.clone(), buf.to_vec()),
+        }))
+    }
 }
