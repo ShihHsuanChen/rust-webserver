@@ -105,26 +105,3 @@ impl HasContent for FormContent {
         RawDataType::Multiple(&self.content)
     }
 }
-
-
-// pub enum ContentType {
-//     Text(Text),
-//     File(File),
-//     Form(Form),
-//     Binary(Binary),
-//     None,
-// }
-// impl HasContent for ContentType {
-//     fn content_type(&self) -> &str {
-//         match self {
-//             ContentType::None => "",
-//             _ => self.content_type()
-//         }
-//     }
-//     fn content(&self) -> RawDataType {
-//         match self {
-//             ContentType::None => RawDataType::None,
-//             _ => self.content()
-//         }
-//     }
-// }
