@@ -1,5 +1,8 @@
 use std::collections::HashMap;
-use super::{Response, MakeContent};
+
+use crate::http;
+
+use super::{Response, MakeContent, MakeContentData};
 
 
 pub fn make_text_response(status_code: usize, content: String) -> Result<Response<MakeTextContent>,String> {
@@ -11,14 +14,34 @@ pub fn make_text_response(status_code: usize, content: String) -> Result<Respons
 }
 
 
+pub struct MakeTextLikeContent {
+    pub content: String,
+    pub content_type: String,
+}
+
+impl MakeContent for MakeTextLikeContent {
+    fn data(&self) -> MakeContentData {
+        MakeContentData {
+            content_type_headers: http::Headers::new(),
+            content_type: self.content.clone(),
+            content_length: self.content.len(),
+        }
+    }
+    fn into_bytes(&self) -> Vec<u8> {
+        self.content.clone().into_bytes()
+    }
+}
+
+
 pub struct MakeHtmlContent (pub String);
 
 impl MakeContent for MakeHtmlContent {
-    fn content_length(&self) -> usize {
-        self.0.len()
-    }
-    fn content_type(&self) -> &str {
-        "text/html"
+    fn data(&self) -> MakeContentData {
+        MakeContentData {
+            content_type_headers: http::Headers::new(),
+            content_type: String::from("text/html"),
+            content_length: self.0.len(),
+        }
     }
     fn into_bytes(&self) -> Vec<u8> {
         self.0.clone().into_bytes()
@@ -29,11 +52,12 @@ impl MakeContent for MakeHtmlContent {
 pub struct MakeTextContent (pub String);
 
 impl MakeContent for MakeTextContent {
-    fn content_length(&self) -> usize {
-        self.0.len()
-    }
-    fn content_type(&self) -> &str {
-        "text/plain"
+    fn data(&self) -> MakeContentData {
+        MakeContentData {
+            content_type_headers: http::Headers::new(),
+            content_type: String::from("text/plain"),
+            content_length: self.0.len(),
+        }
     }
     fn into_bytes(&self) -> Vec<u8> {
         self.0.clone().into_bytes()
@@ -44,11 +68,12 @@ impl MakeContent for MakeTextContent {
 pub struct MakeCssContent (pub String);
 
 impl MakeContent for MakeCssContent {
-    fn content_length(&self) -> usize {
-        self.0.len()
-    }
-    fn content_type(&self) -> &str {
-        "text/css"
+    fn data(&self) -> MakeContentData {
+        MakeContentData {
+            content_type_headers: http::Headers::new(),
+            content_type: String::from("text/css"),
+            content_length: self.0.len(),
+        }
     }
     fn into_bytes(&self) -> Vec<u8> {
         self.0.clone().into_bytes()
@@ -59,11 +84,12 @@ impl MakeContent for MakeCssContent {
 pub struct MakeXmlContent (pub String);
 
 impl MakeContent for MakeXmlContent {
-    fn content_length(&self) -> usize {
-        self.0.len()
-    }
-    fn content_type(&self) -> &str {
-        "application/xml"
+    fn data(&self) -> MakeContentData {
+        MakeContentData {
+            content_type_headers: http::Headers::new(),
+            content_type: String::from("application/xml"),
+            content_length: self.0.len(),
+        }
     }
     fn into_bytes(&self) -> Vec<u8> {
         self.0.clone().into_bytes()
@@ -74,11 +100,12 @@ impl MakeContent for MakeXmlContent {
 pub struct MakeJavascriptContent (pub String);
 
 impl MakeContent for MakeJavascriptContent {
-    fn content_length(&self) -> usize {
-        self.0.len()
-    }
-    fn content_type(&self) -> &str {
-        "application/javascript"
+    fn data(&self) -> MakeContentData {
+        MakeContentData {
+            content_type_headers: http::Headers::new(),
+            content_type: String::from("application/javascript"),
+            content_length: self.0.len(),
+        }
     }
     fn into_bytes(&self) -> Vec<u8> {
         self.0.clone().into_bytes()

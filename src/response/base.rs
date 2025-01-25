@@ -70,21 +70,28 @@ pub trait MakeResponse {
     }
 }
 
+pub struct MakeContentData {
+    pub content_type_headers: http::Headers,
+    pub content_type: String,
+    pub content_length: usize,
+}
+
 pub trait MakeContent {
+    fn data(&self) -> MakeContentData;
     fn headers(&self) -> http::Headers {
+        let data = self.data();
         let mut headers = http::Headers::new();
+        headers.extend(data.content_type_headers);
         headers.insert(
             String::from("Content-Length"),
-            (self.content_length().to_string(), vec![])
+            (data.content_length.to_string(), vec![])
         );
         headers.insert(
             String::from("Content-Type"),
-            (self.content_type().to_string(), vec![])
+            (data.content_type.to_string(), vec![])
         );
         headers
     }
-    fn content_length(&self) -> usize;
-    fn content_type(&self) -> &str;
     fn into_bytes(&self) -> Vec<u8>;
 }
 
