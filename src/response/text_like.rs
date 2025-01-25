@@ -2,18 +2,18 @@ use std::collections::HashMap;
 use super::{Response, MakeContent};
 
 
-pub fn make_text_response(status_code: usize, content: String) -> Result<Response<TextContent>,String> {
-    Ok(Response::<TextContent>::new(
+pub fn make_text_response(status_code: usize, content: String) -> Result<Response<MakeTextContent>,String> {
+    Ok(Response::<MakeTextContent>::new(
         status_code,
         HashMap::new(),
-        TextContent(content),
+        MakeTextContent(content),
     )?)
 }
 
 
-pub struct HtmlContent (pub String);
+pub struct MakeHtmlContent (pub String);
 
-impl MakeContent for HtmlContent {
+impl MakeContent for MakeHtmlContent {
     fn content_length(&self) -> usize {
         self.0.len()
     }
@@ -26,9 +26,9 @@ impl MakeContent for HtmlContent {
 }
 
 
-pub struct TextContent (pub String);
+pub struct MakeTextContent (pub String);
 
-impl MakeContent for TextContent {
+impl MakeContent for MakeTextContent {
     fn content_length(&self) -> usize {
         self.0.len()
     }
@@ -41,9 +41,9 @@ impl MakeContent for TextContent {
 }
 
 
-pub struct CssContent (pub String);
+pub struct MakeCssContent (pub String);
 
-impl MakeContent for CssContent {
+impl MakeContent for MakeCssContent {
     fn content_length(&self) -> usize {
         self.0.len()
     }
@@ -56,9 +56,9 @@ impl MakeContent for CssContent {
 }
 
 
-pub struct XmlContent (pub String);
+pub struct MakeXmlContent (pub String);
 
-impl MakeContent for XmlContent {
+impl MakeContent for MakeXmlContent {
     fn content_length(&self) -> usize {
         self.0.len()
     }
@@ -71,9 +71,9 @@ impl MakeContent for XmlContent {
 }
 
 
-pub struct JavascriptContent (pub String);
+pub struct MakeJavascriptContent (pub String);
 
-impl MakeContent for JavascriptContent {
+impl MakeContent for MakeJavascriptContent {
     fn content_length(&self) -> usize {
         self.0.len()
     }

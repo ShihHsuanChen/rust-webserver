@@ -2,7 +2,7 @@ use std;
 use std::path::Path;
 use std::collections::HashMap;
 
-use super::{Response, HtmlContent};
+use super::{Response, MakeHtmlContent};
 
 
 pub struct Template<'a> {
@@ -24,7 +24,7 @@ impl<'a> Template<'a> {
         status_code: usize,
         path: &str,
         args: &HashMap<String, String>
-    ) -> Result<Response<HtmlContent>, String>
+    ) -> Result<Response<MakeHtmlContent>, String>
     {
         let path = Path::new(self.root).join(path);
         let path_str = match path.to_str() {
@@ -34,10 +34,10 @@ impl<'a> Template<'a> {
         if path.is_file() {
             match std::fs::read_to_string(path_str) {
                 Ok(content) => {
-                    Ok(Response::<HtmlContent>::new(
+                    Ok(Response::<MakeHtmlContent>::new(
                         status_code,
                         HashMap::new(),
-                        HtmlContent(content),
+                        MakeHtmlContent(content),
                     )?)
                 },
                 Err(_) => Err(format!("Fail to read file from {}", path_str)),
