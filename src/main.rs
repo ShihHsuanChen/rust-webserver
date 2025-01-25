@@ -8,7 +8,7 @@ use webserver::response::{
     make_text_response,
     Template,
 };
-use webserver::json;
+use webserver::{json, http};
 use webserver::app::App;
 use webserver::router::Router;
 use webserver::middleware::parse_request;
@@ -50,9 +50,10 @@ fn get_ui_router() -> Router<'static> {
         println!("{:?}", request.query);
         
         let fname = &path_args["file_name"];
-        if let Ok(resp) = TEMPLATE.make_response(200, &fname, &args) {
+        let headers = http::Headers::new();
+        if let Ok(resp) = TEMPLATE.make_response(200, &fname, &args, headers.clone()) {
             Ok(Box::new(resp))
-        } else if let Ok(resp) = TEMPLATE.make_response(400, "404.html", &args) {
+        } else if let Ok(resp) = TEMPLATE.make_response(400, "404.html", &args, headers.clone()) {
             Ok(Box::new(resp))
         } else {
             Ok(Box::new(make_text_response(404, String::from("NOT FOUND"))?))

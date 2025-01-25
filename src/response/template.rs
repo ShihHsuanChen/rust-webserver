@@ -2,11 +2,27 @@ use std;
 use std::path::Path;
 use std::collections::HashMap;
 
-use super::{Response, MakeHtmlContent};
+use crate::http;
+
+use super::{Response, MakeTextLikeContent};
 
 
 pub struct Template<'a> {
     pub root: &'a str,
+}
+
+fn guess_content_type(path: &str) -> String {
+    let path = Path::new(path);
+    (match path.extension() {
+        Some(osstr) => match osstr.to_str() {
+            Some("html") => "text/html",
+            Some("css") => "text/css",
+            Some("js") => "application/javascript",
+            Some("xml") => "application/xml",
+            _ => "text/plain",
+        },
+        None => "text/plain",
+    }).to_string()
 }
 
 impl<'a> Template<'a> {
@@ -23,21 +39,23 @@ impl<'a> Template<'a> {
         &self,
         status_code: usize,
         path: &str,
-        args: &HashMap<String, String>
-    ) -> Result<Response<MakeHtmlContent>, String>
+        args: &HashMap<String, String>,
+        extra_headers: http::Headers,
+    ) -> Result<Response<MakeTextLikeContent>, String>
     {
         let path = Path::new(self.root).join(path);
         let path_str = match path.to_str() {
             Some(v) => v,
-            None => "/", // TODO: if path is not a valid unicode ???
+            None => panic!("Invalid path {path:?}"), // TODO: if path is not a valid unicode ???
         };
+        let content_type = guess_content_type(path_str);
         if path.is_file() {
             match std::fs::read_to_string(path_str) {
                 Ok(content) => {
-                    Ok(Response::<MakeHtmlContent>::new(
+                    Ok(Response::<MakeTextLikeContent>::new(
                         status_code,
-                        HashMap::new(),
-                        MakeHtmlContent(content),
+                        extra_headers,
+                        MakeTextLikeContent { content, content_type },
                     )?)
                 },
                 Err(_) => Err(format!("Fail to read file from {}", path_str)),
