@@ -2,6 +2,8 @@ use std;
 use std::path::Path;
 use std::collections::HashMap;
 
+use regex::{Regex, Captures};
+
 use crate::http;
 
 use super::{Response, MakeTextLikeContent};
@@ -24,6 +26,16 @@ fn guess_content_type(path: &str) -> String {
         None => "text/plain",
     }).to_string()
 }
+
+
+pub fn replace_args(content: &str, args: &HashMap<String,String>) -> String {
+    let re = Regex::new(r"\{ *(\w+) *\}").unwrap();
+    let empty = String::from("");
+    re.replace_all(content, |caps: &Captures| {
+        args.get(&caps[1]).unwrap_or(&empty.clone()).to_owned()
+    }).to_string().to_owned()
+}
+
 
 impl<'a> Template<'a> {
     pub fn new(root: &'a str) -> Result<Self, String> {
@@ -52,6 +64,7 @@ impl<'a> Template<'a> {
         if path.is_file() {
             match std::fs::read_to_string(path_str) {
                 Ok(content) => {
+                    let content = replace_args(&content, args);
                     Ok(Response::<MakeTextLikeContent>::new(
                         status_code,
                         extra_headers,
