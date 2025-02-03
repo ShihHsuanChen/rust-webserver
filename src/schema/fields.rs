@@ -34,7 +34,7 @@ pub struct Integer<T> {
     pub le: Option<T>,
     pub choice: Option<Vec<T>>,
 } 
-impl<T> HasDefault for Integer<T> where T: num::Integer {
+impl<T> HasDefault for Integer<T> where T: num::Integer + Clone {
     fn new() -> Self {
         Self {
             common: Common::<T>::new(),
@@ -51,6 +51,7 @@ where T: num::Integer + std::str::FromStr + std::fmt::Display + std::fmt::Debug 
     type Type = T;
 
     fn common(&self) -> &Common<Self::Type> { &self.common }
+    fn common_mut(&mut self) -> &mut Common<Self::Type> { &mut self.common }
 
     fn _validate_pre(&self, value: RawDataType) -> ValidationResult<Self::Type> {
         if let RawDataType::Text(value) = value {
@@ -146,6 +147,7 @@ where T: num::Float + std::str::FromStr + std::fmt::Display + std::fmt::Debug + 
     type Type = T;
 
     fn common(&self) -> &Common<Self::Type> { &self.common }
+    fn common_mut(&mut self) -> &mut Common<Self::Type> { &mut self.common }
 
     fn _validate_pre(&self, value: RawDataType) -> ValidationResult<Self::Type> {
         if let RawDataType::Text(value) = value {
@@ -229,6 +231,7 @@ impl FieldValidate for Text {
     type Type = String;
 
     fn common(&self) -> &Common<Self::Type> { &self.common }
+    fn common_mut(&mut self) -> &mut Common<Self::Type> { &mut self.common }
 
     fn _validate_pre(&self, value: RawDataType) -> ValidationResult<Self::Type> {
         if let RawDataType::Text(value) = value {
@@ -296,6 +299,7 @@ impl FieldValidate for Bool {
     type Type = bool;
 
     fn common(&self) -> &Common<Self::Type> { &self.common }
+    fn common_mut(&mut self) -> &mut Common<Self::Type> { &mut self.common }
 
     fn _validate_pre(&self, value: RawDataType) -> ValidationResult<Self::Type> {
         if let RawDataType::Text(value) = value {
@@ -332,6 +336,7 @@ impl FieldValidate for AnyJson {
     type Type = json::JsonValue;
 
     fn common(&self) -> &Common<Self::Type> { &self.common }
+    fn common_mut(&mut self) -> &mut Common<Self::Type> { &mut self.common }
 
     fn _validate_pre(&self, value: RawDataType) -> ValidationResult<Self::Type> {
         if let RawDataType::Text(value) = value {
@@ -389,6 +394,7 @@ impl FieldValidate for File {
     type Type = FileCursor;
 
     fn common(&self) -> &Common<Self::Type> { &self.common }
+    fn common_mut(&mut self) -> &mut Common<Self::Type> { &mut self.common }
 
     fn _validate_pre(&self, value: RawDataType) -> ValidationResult<Self::Type> {
         if let RawDataType::File(value) = value {
@@ -427,6 +433,7 @@ impl FieldValidate for Binary {
     type Type = Vec<u8>;
 
     fn common(&self) -> &Common<Self::Type> { &self.common }
+    fn common_mut(&mut self) -> &mut Common<Self::Type> { &mut self.common }
 
     fn _validate_pre(&self, value: RawDataType) -> ValidationResult<Self::Type> {
         if let RawDataType::Binary(value) = value {
@@ -465,6 +472,7 @@ where T: FieldValidate
     type Type = Vec<T::Type>;
 
     fn common(&self) -> &Common<Self::Type> { &self.common }
+    fn common_mut(&mut self) -> &mut Common<Self::Type> { &mut self.common }
 
     fn _validate_pre(&self, value: RawDataType) -> ValidationResult<Self::Type> {
         if let RawDataType::Text(value) = value {
@@ -479,7 +487,7 @@ where T: FieldValidate
                                 s = s.trim_matches('\"').to_string();
                             }
                             //
-                            match self.elem_field.parse(RawDataType::Text(&s)) {
+                            match self.elem_field.validate(RawDataType::Text(&s)) {
                                 Ok(v) => res.push(v),
                                 Err(_errs) => {
                                     for mut _err in _errs {
@@ -571,6 +579,7 @@ where T: FieldValidate
     type Type = HashMap<String,T::Type>;
 
     fn common(&self) -> &Common<Self::Type> { &self.common }
+    fn common_mut(&mut self) -> &mut Common<Self::Type> { &mut self.common }
 
     fn _validate_pre(&self, value: RawDataType) -> ValidationResult<Self::Type> {
         match value {
@@ -587,7 +596,7 @@ where T: FieldValidate
                                     s = s.trim_matches('\"').to_string();
                                 }
                                 //
-                                match self.elem_field.parse(RawDataType::Text(&s)) {
+                                match self.elem_field.validate(RawDataType::Text(&s)) {
                                     Ok(v) => { res.insert(k, v); },
                                     Err(_errs) => {
                                         for mut _err in _errs {

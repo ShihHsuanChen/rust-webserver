@@ -75,6 +75,7 @@ fn get_api_router() -> Router<'static> {
                 location: Location::Body,
                 default: None,
                 field: None,
+                val: None,
             },
             schema: None,
         };

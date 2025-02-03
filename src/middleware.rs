@@ -29,7 +29,7 @@ where T: FieldValidate
                 _ => &path_args,
             };
             if let Some(s) = src.get(&name) {
-                match field.parse(RawDataType::Text(s)) {
+                match field.validate(RawDataType::Text(s)) {
                     Ok(v) => return Ok(Some(v)),
                     Err(_errs) => return Err(_errs),
                 }
@@ -51,7 +51,7 @@ where T: FieldValidate
         },
         Location::Body => {
             if let Some(body) = &request.body {
-                match field.parse(body.content()) {
+                match field.validate(body.content()) {
                     Ok(v) => return Ok(Some(v)),
                     Err(_errs) => return Err(_errs),
                 }

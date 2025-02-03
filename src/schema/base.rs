@@ -63,15 +63,23 @@ pub struct Common<T> {
     pub required: bool,
     pub location: Location,
     pub field: Option<String>,
+    pub val: Option<T>, // TODO: make private
 }
-impl<T> Common<T> {
+impl<T> Common<T> where T: Clone {
     pub fn new() -> Self {
         Self {
             default: None,
             required: true,
             location: Location::None,
             field: None,
+            val: None,
         }
+    }
+    pub fn val(&self) -> Option<T> {
+        self.val.clone() // TODO: remove clone
+    }
+    pub fn set_val(&mut self, val: T) {
+        self.val = Some(val)
     }
 }
 
@@ -79,6 +87,7 @@ pub trait FieldValidate {
     type Type: Clone;
 
     fn common(&self) -> &Common<Self::Type>;
+    fn common_mut(&mut self) -> &mut Common<Self::Type>;
     fn default(&self) -> &Option<Self::Type> { &self.common().default }
     fn required(&self) -> bool { self.common().required }
     fn location(&self) -> Location { self.common().location.clone() }
@@ -100,7 +109,12 @@ pub trait FieldValidate {
         }
     }
     // default
-    fn parse(&self, value: RawDataType) -> ValidationResult<Self::Type> {
+    fn validate(&self, value: RawDataType) -> ValidationResult<Self::Type> {
         Ok(self.validate_post(self.validate_pre(value)?)?)
+    }
+    fn parse(&mut self, value: RawDataType) -> ValidationResult<()> {
+        let v = self.validate(value)?;
+        self.common_mut().set_val(v);
+        Ok(())
     }
 }
